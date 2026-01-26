@@ -1,0 +1,39 @@
+# Link checker configuration
+
+cache = true
+max_cache_age = "1d"
+
+max_redirects = 5
+max_retries = 3
+timeout = 30
+
+accept = [
+  200, 201, 202, 203, 204,
+  206, 207, 208, 226,
+  307, 308,
+  403,  # Sites that block automated requests
+  429   # Rate limit
+]
+
+exclude = [
+  "http://localhost*",
+  "http://127.0.0.1*",
+  "http://0.0.0.0*",
+  ".git",
+  "mailto:*",
+]
+
+exclude_link_local = false
+exclude_all_private = false
+include_mail = false
+
+remap = []
+
+user_agent = "Mozilla/5.0 (compatible; lychee/link-checker)"
+
+require_https = false
+insecure = false
+max_concurrency = 16
+
+verbose = "info"
+no_progress = true
