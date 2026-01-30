@@ -81,9 +81,21 @@ kubectl get namespaces
 
 **Expected Output:**
 
+For `kubectl get nodes`:
+
 ```
-NAME                 STATUS   ROLES           AGE   VERSION
+NAME                       STATUS   ROLES           AGE   VERSION
 argocd-lab-control-plane   Ready    control-plane   1m    v1.27.3
+```
+
+For `kubectl get namespaces`:
+
+```
+NAME              STATUS   AGE
+default           Active   26s
+kube-node-lease   Active   26s
+kube-public       Active   26s
+kube-system       Active   26s
 ```
 
 ---
@@ -129,28 +141,42 @@ serviceaccount/argocd-application-controller created
 ### Task 2.3: Verify Argo CD Installation
 
 ```bash
-# Check all Argo CD pods are running
-kubectl get pods -n argocd
-
-# Check Argo CD services
-kubectl get svc -n argocd
-
-# Check Argo CD deployments
-kubectl get deployments -n argocd
+# Check all Argo CD deployments, pods, and services
+kubectl get deploy,pods,svc -n argocd
 ```
 
-**Expected Output (Pods):**
+**Expected Output:**
 
 ```
-NAME                                  READY   STATUS    RESTARTS   AGE
-argocd-application-controller-0       1/1     Running   0          2m
-argocd-dex-server-xxx                 1/1     Running   0          2m
-argocd-redis-xxx                      1/1     Running   0          2m
-argocd-repo-server-xxx                1/1     Running   0          2m
-argocd-server-xxx                     1/1     Running   0          2m
-argocd-applicationset-controller-xxx  1/1     Running   0          2m
-argocd-notifications-controller-xxx   1/1     Running   0          2m
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/argocd-applicationset-controller   1/1     1            1           53s
+deployment.apps/argocd-dex-server                  1/1     1            1           52s
+deployment.apps/argocd-notifications-controller    1/1     1            1           52s
+deployment.apps/argocd-redis                       1/1     1            1           52s
+deployment.apps/argocd-repo-server                 1/1     1            1           52s
+deployment.apps/argocd-server                      1/1     1            1           52s
+
+NAME                                                   READY   STATUS    RESTARTS   AGE
+pod/argocd-application-controller-0                    1/1     Running   0          52s
+pod/argocd-applicationset-controller-967c7df85-kh55c   1/1     Running   0          52s
+pod/argocd-dex-server-7655cd44b9-pb6kl                 1/1     Running   0          52s
+pod/argocd-notifications-controller-dc89756cd-crqn5    1/1     Running   0          52s
+pod/argocd-redis-5b98c94768-qmjt2                      1/1     Running   0          52s
+pod/argocd-repo-server-7f8c748c4c-fftl9                1/1     Running   0          52s
+pod/argocd-server-74b7b9c7cc-bv5jk                     1/1     Running   0          52s
+
+NAME                                              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+service/argocd-applicationset-controller          ClusterIP   10.96.145.212   <none>        7000/TCP,8080/TCP            53s
+service/argocd-dex-server                         ClusterIP   10.108.4.6      <none>        5556/TCP,5557/TCP,5558/TCP   53s
+service/argocd-metrics                            ClusterIP   10.101.38.38    <none>        8082/TCP                     53s
+service/argocd-notifications-controller-metrics   ClusterIP   10.100.51.181   <none>        9001/TCP                     53s
+service/argocd-redis                              ClusterIP   10.99.251.189   <none>        6379/TCP                     53s
+service/argocd-repo-server                        ClusterIP   10.111.44.35    <none>        8081/TCP,8084/TCP            53s
+service/argocd-server                             ClusterIP   10.105.63.43    <none>        80/TCP,443/TCP               53s
+service/argocd-server-metrics                     ClusterIP   10.101.31.116   <none>        8083/TCP                     53s
 ```
+
+**Note:** All pods should show `READY 1/1` and `STATUS Running`. The deployments should show `READY 1/1` and `AVAILABLE 1`.
 
 **Question:** What is the role of each Argo CD component? (Hint: Look up the documentation or observe the component names)
 

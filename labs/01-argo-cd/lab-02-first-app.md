@@ -133,7 +133,7 @@ Repo:               https://github.com/argoproj/argocd-example-apps.git
 Target:             HEAD
 Path:               guestbook
 SyncWindow:         Sync Allowed
-Sync Policy:        <none>
+Sync Policy:        Manual
 Sync Status:        OutOfSync from HEAD (53e28ff)
 Health Status:      Missing
 
@@ -289,7 +289,7 @@ sed -i '' 's/replicas: 1/replicas: 2/' guestbook-ui-deployment.yaml
 # Commit and push changes
 git add guestbook-ui-deployment.yaml
 git commit -m "Scale guestbook to 2 replicas"
-git push origin main
+git push origin master
 
 # Update Argo CD application to use your fork
 argocd app set guestbook --repo https://github.com/$GITHUB_USER/argocd-example-apps.git
@@ -320,10 +320,10 @@ argocd app diff guestbook
 
 ```
 ===== apps/Deployment default/guestbook-ui ======
-...
-spec:
--  replicas: 1
-+  replicas: 2
+99c99
+<   replicas: 1
+---
+>   replicas: 2
 ...
 ```
 
@@ -388,7 +388,7 @@ argocd app sync guestbook --prune
 argocd app sync guestbook --dry-run
 
 # Sync specific resources only
-argocd app sync guestbook --resource apps:Deployment:default:guestbook-ui
+argocd app sync guestbook --resource apps:Deployment:guestbook-ui
 ```
 
 **Understanding Sync Options:**

@@ -46,7 +46,7 @@ argocd app create sync-demo \
   --path guestbook \
   --dest-server https://kubernetes.default.svc \
   --dest-namespace default \
-  --sync-policy none
+  --sync-policy manual
 
 # Sync it once to deploy
 argocd app sync sync-demo
@@ -58,7 +58,7 @@ argocd app get sync-demo | grep "Sync Policy"
 **Expected Output:**
 
 ```
-Sync Policy:        <none>
+Sync Policy:        Manual
 ```
 
 Now enable automated sync:
@@ -123,6 +123,8 @@ argocd app get sync-demo | grep -A3 "Sync Policy"
 
 ```
 Sync Policy:        Automated (Prune)
+Sync Status:        OutOfSync from  (8a01d34)
+Health Status:      Healthy
 ```
 
 ### Task 2.2: Test Prune Behavior
@@ -150,14 +152,23 @@ Self-heal automatically reverts manual changes to match Git state.
 # Enable self-heal
 argocd app set sync-demo --self-heal
 
-# Verify
-argocd app get sync-demo | grep -A3 "Sync Policy"
+# Verify using YAML output
+argocd app get sync-demo -o yaml | grep -A5 syncPolicy
 ```
 
 **Expected Output:**
 
+```yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
 ```
-Sync Policy:        Automated (Prune, Self-Heal)
+
+**Alternative: Check in JSON format:**
+
+```bash
+argocd app get sync-demo -o json | jq '.spec.syncPolicy'
 ```
 
 ### Task 2.4: Test Self-Heal Behavior
@@ -312,15 +323,10 @@ argocd app create sync-waves \
   --repo https://github.com/$GITHUB_USER/sync-waves-demo.git \
   --path . \
   --dest-server https://kubernetes.default.svc \
-  --dest-namespace wave-demo \
-  --sync-policy automated
+  --dest-namespace wave-demo
 
 # Sync and watch the order of resource creation
-argocd app sync sync-waves --async
-
-# Watch the sync progress
-watch -n 1 'argocd app get sync-waves'
-# Press Ctrl+C when complete
+argocd app sync sync-waves
 
 # Check the resources
 kubectl get all -n wave-demo
@@ -338,10 +344,12 @@ kubectl get all -n wave-demo
 ### Task 3.3: View Sync Waves in UI
 
 1. Open Argo CD UI
-2. Navigate to the `sync-waves` application
-3. Click "Sync"
-4. Observe the sync waves indicator showing deployment progress
-5. Notice resources are grouped by wave number
+2. Delete the application from the UI
+3. Recreate the app using task 3.2
+4. Navigate to the `sync-waves` application
+5. Click "Sync"
+6. Observe the sync waves indicator showing deployment progress
+7. Notice resources are grouped by wave number
 
 ---
 
@@ -403,7 +411,7 @@ git push
 
 ```bash
 # Create a post-sync job
-cat <<EOF > postsync-test.yaml
+cat <<'EOF' > postsync-test.yaml
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -425,7 +433,8 @@ spec:
         - |
           echo "Running smoke tests..."
           # Test service connectivity
-          if curl -f http://web-app.wave-demo.svc.cluster.local; then
+          SERVICE_URL="http://web-app.wave-demo.svc.cluster.local"
+          if curl -f "$SERVICE_URL"; then
             echo "Smoke test passed!"
             exit 0
           else
@@ -447,22 +456,6 @@ git push
 ```bash
 # Trigger a sync to see hooks in action
 argocd app sync sync-waves
-
-# Watch the progress
-argocd app get sync-waves --refresh
-
-# Check job execution
-kubectl get jobs -n wave-demo
-kubectl logs job/db-migration -n wave-demo
-kubectl logs job/smoke-test -n wave-demo
-```
-
-**Expected Output:**
-
-```
-NAME           COMPLETIONS   DURATION   AGE
-db-migration   1/1           5s         1m
-smoke-test     1/1           3s         45s
 ```
 
 **Question:** What is the purpose of `hook-delete-policy: HookSucceeded`? What other options are available?
@@ -477,45 +470,63 @@ smoke-test     1/1           3s         45s
 # List all resources in an application
 argocd app resources sync-waves
 
-# Sync only a specific resource
-argocd app sync sync-waves --resource apps:Deployment:wave-demo:web-app
+# Sync only a specific resource (format: GROUP:KIND:NAME)
+argocd app sync sync-waves --resource apps:Deployment:web-app
 
 # Sync multiple specific resources
 argocd app sync sync-waves \
-  --resource :ConfigMap:wave-demo:app-config \
-  --resource apps:Deployment:wave-demo:web-app
+  --resource :ConfigMap:app-config \
+  --resource apps:Deployment:web-app
 ```
 
-### Task 5.2: Skip Resource Sync
+### Task 5.2: Using Validate=false Sync Option
+
+The `Validate=false` sync option skips kubectl validation, useful when applying resources that may not pass validation but are still valid:
 
 ```bash
-# Add sync skip annotation to a resource
 cd ~/sync-waves-demo
 
-# Edit the secret to skip sync
-cat <<EOF > secret-skip.yaml
+# Create a ConfigMap with Validate=false option
+cat <<EOF > debug-config.yaml
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: app-secret-manual
+  name: debug-config
   namespace: wave-demo
   annotations:
-    argocd.argoproj.io/sync-options: Sync=false
-type: Opaque
-stringData:
-  manual-key: "this-wont-sync"
+    argocd.argoproj.io/sync-options: Validate=false
+data:
+  debug: "true"
+  log-level: "debug"
 EOF
 
 # Commit and push
-git add secret-skip.yaml
-git commit -m "Add secret with sync skip"
+git add debug-config.yaml
+git commit -m "Add debug config with Validate=false"
 git push
 
-# Sync application - the secret won't be created
+# Sync the application
 argocd app sync sync-waves
-kubectl get secret app-secret-manual -n wave-demo
-# Should return "not found"
+
+# Check the configmap
+kubectl get cm debug-config -n wave-demo -o yaml
 ```
+
+**Valid Sync Options:**
+
+The documented sync options you can use with `argocd.argoproj.io/sync-options` are:
+
+- `Validate=false` - Skip validation
+- `CreateNamespace=true` - Auto-create namespace
+- `PrunePropagationPolicy=foreground` - Control pruning behavior
+- `PruneLast=true` - Prune as final wave
+- `Replace=true` - Use kubectl replace instead of apply
+- `ServerSideApply=true/false` - Enable/disable server-side apply
+- `SkipDryRunOnMissingResource=true` - Skip dry-run for missing CRDs
+- `RespectIgnoreDifferences=true` - Honor ignoreDifferences config
+- `ApplyOutOfSyncOnly=true` - Only sync out-of-sync resources
+
+**Note:** `Sync=false` is NOT a documented sync option and has no effect.
 
 ---
 
@@ -525,48 +536,425 @@ Sync windows allow you to restrict when syncs can occur (e.g., during maintenanc
 
 ### Task 6.1: Configure a Sync Window
 
+Sync windows control when applications can be synchronized. They are configured in AppProject resources.
+
 ```bash
-# Create a sync window in the default project
-# Allow syncs only during business hours (9 AM - 5 PM, Mon-Fri)
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: argocd
-data:
-  application.sync-windows: |
-    - kind: allow
-      schedule: '0 9-17 * * 1-5'
-      duration: 8h
-      applications:
-      - sync-waves
-      clusters:
-      - https://kubernetes.default.svc
-      namespaces:
-      - wave-demo
-EOF
+# Add a sync window to allow syncs during business hours (9 AM - 5 PM, Mon-Fri)
+# Using CLI (recommended method)
+argocd proj windows add default \
+  --kind allow \
+  --schedule "0 9 * * 1-5" \
+  --duration 8h \
+  --applications "sync-waves"
 
-# Restart Argo CD server to pick up changes
-kubectl rollout restart deployment argocd-server -n argocd
-kubectl rollout status deployment argocd-server -n argocd
+# List sync windows for the default project
+argocd proj windows list default
 
-# Check sync windows
+# Check the sync window status on your application
+argocd app get sync-waves | grep -A3 "Sync Window"
+```
+
+**Understanding the schedule format:**
+
+- Uses cron format: `minute hour day-of-month month day-of-week`
+- `0 9 * * 1-5` = 9 AM, Monday through Friday
+- `duration: 8h` = window lasts for 8 hours (9 AM to 5 PM)
+
+**Alternative: Using YAML (kubectl patch)**
+
+```bash
+# View current AppProject
+kubectl get appproject default -n argocd -o yaml
+
+# Add sync window using kubectl patch
+kubectl patch appproject default -n argocd --type merge -p '
+{
+  "spec": {
+    "syncWindows": [
+      {
+        "kind": "allow",
+        "schedule": "0 9 * * 1-5",
+        "duration": "8h",
+        "applications": ["sync-waves"],
+        "manualSync": true
+      }
+    ]
+  }
+}
+'
+
+# Verify the sync window was added
 argocd proj windows list default
 ```
 
-### Task 6.2: Test Sync Window (Optional)
+**Expected Output:**
 
-```bash
-# Try to sync outside the window (if current time is outside 9-5 Mon-Fri)
-argocd app sync sync-waves
-
-# You should see a message about sync window
-# Check application status
-argocd app get sync-waves | grep "Sync Window"
+```
+ID  STATUS  KIND   SCHEDULE        DURATION  APPLICATIONS  NAMESPACES  CLUSTERS  MANUALSYNC
+0   Active  allow  0 9 * * 1-5     8h        sync-waves    -           -         Enabled
 ```
 
-**Note:** For testing purposes, you might want to create a sync window that's currently active.
+### Task 6.2: Testing Sync Windows
+
+**Step 1: Create and Test a Deny Window**
+
+```bash
+# Add a deny window that starts immediately (runs every minute)
+argocd proj windows add default \
+  --kind deny \
+  --schedule "* * * * *" \
+  --duration 2m \
+  --applications "*"
+
+# List windows to confirm it's created (will get ID 0)
+argocd proj windows list default
+
+# Wait a few seconds for the window to become active
+sleep 5
+
+# Check application sync window status
+argocd app get sync-waves | grep -E "SyncWindow|Assigned"
+```
+
+**Expected Output:**
+
+```text
+SyncWindow:         Sync Denied
+Assigned Windows:   deny:* * * * *:2m
+```
+
+**Try to sync - it should be blocked:**
+
+```bash
+argocd app sync sync-waves
+# Expected: FATA[0001] rpc error: code = PermissionDenied desc = Cannot sync: Blocked by sync window
+```
+
+**Step 2: Test Manual Sync Override**
+
+```bash
+# Enable manual sync override for the deny window (ID 0)
+argocd proj windows enable-manual-sync default 0
+
+# Now try manual sync again - it should work
+argocd app sync sync-waves
+
+# Check the window configuration
+argocd proj windows list default
+# The MANUALSYNC column should now show "Enabled"
+```
+
+**Step 3: Clean Up and Create Realistic Windows**
+
+```bash
+# Remove the test deny window
+argocd proj windows delete default 0
+
+# Add allow window for weekday business hours (ID 0)
+# - Only applies to 'sync-waves' application
+# - Allows syncs Mon-Fri 9 AM - 5 PM
+argocd proj windows add default \
+  --kind allow \
+  --schedule "0 9 * * 1-5" \
+  --duration 8h \
+  --applications "sync-waves" \
+  --manual-sync
+
+# Add deny window for weekend maintenance (ID 1)
+# - Applies to ALL applications (*)
+# - Blocks syncs on Sat-Sun
+argocd proj windows add default \
+  --kind deny \
+  --schedule "0 0 * * 0,6" \
+  --duration 24h \
+  --applications "*"
+
+# List all windows
+argocd proj windows list default
+
+# Check how windows affect your app
+argocd app get sync-waves | grep -E "SyncWindow|Assigned"
+```
+
+**Expected Output:**
+
+```text
+ID  STATUS   KIND   SCHEDULE        DURATION  APPLICATIONS  NAMESPACES  CLUSTERS  MANUALSYNC
+0   Inactive allow  0 9 * * 1-5     8h        sync-waves    -           -         Enabled
+1   Inactive deny   0 0 * * 0,6     24h       *             -           -         Disabled
+```
+
+**Understanding Window Behavior:**
+
+| Time Period | Allow Window (ID 0) | Deny Window (ID 1) | Result for sync-waves |
+|-------------|---------------------|--------------------|-----------------------|
+| Mon-Fri 9 AM - 5 PM | Active | Inactive | ✅ Sync allowed |
+| Mon-Fri outside 9-5 | Inactive | Inactive | ✅ Sync allowed (no restrictions) |
+| Sat-Sun | Inactive | Active | ❌ Sync denied (deny wins) |
+
+**Key Concepts:**
+
+- **Deny windows take precedence** - if both allow and deny are active, deny wins
+- `--manual-sync` allows manual override during window restrictions
+- When no windows are active, syncs are allowed by default
+- Each window gets a unique ID (0, 1, 2...) for management
+
+### Task 6.3: Wildcard Pattern Examples
+
+Sync windows support wildcard patterns for flexible application matching. Let's explore how different patterns work.
+
+**Wildcard Pattern Summary:**
+
+| Pattern Type | Syntax | Example | Matches | Does NOT Match |
+|-------------|--------|---------|---------|----------------|
+| All apps | `*` | `*` | Everything | N/A |
+| Prefix match | `prefix-*` | `sync-*` | sync-waves, sync-demo | waves-sync, app-sync |
+| Suffix match | `*-suffix` | `*-prod` | api-prod, web-prod | prod-api, production |
+| Middle match | `*-middle-*` | `*-dev-*` | app-dev-v1, api-dev-test | dev-app, app-dev |
+| Specific list | `app1,app2` | `app1,app2` | app1, app2 | app3, app10 |
+| Exact name | `exact-name` | `sync-waves` | sync-waves only | sync-wave, sync-waves-demo |
+
+**Hands-On: Testing Wildcard Patterns**
+
+```bash
+# First, clean up existing windows from Task 6.2
+argocd proj windows delete default 0 2>/dev/null || true
+argocd proj windows delete default 1 2>/dev/null || true
+
+# Pattern 1: Match all apps with "*"
+argocd proj windows add default \
+  --kind deny \
+  --schedule "0 2 * * *" \
+  --duration 2h \
+  --applications "*"
+
+# Pattern 2: Match apps by prefix "sync-*"
+argocd proj windows add default \
+  --kind allow \
+  --schedule "* * * * *" \
+  --duration 10m \
+  --applications "sync-*"
+
+# Pattern 3: Match apps by suffix "*-prod"
+argocd proj windows add default \
+  --kind deny \
+  --schedule "0 0 * * 0,6" \
+  --duration 24h \
+  --applications "*-prod"
+
+# Pattern 4: Match apps with middle pattern "*-dev-*"
+argocd proj windows add default \
+  --kind allow \
+  --schedule "0 8 * * 1-5" \
+  --duration 12h \
+  --applications "*-dev-*"
+
+# Pattern 5: Match specific apps (comma-separated list)
+argocd proj windows add default \
+  --kind allow \
+  --schedule "0 9 * * 1-5" \
+  --duration 8h \
+  --applications "sync-waves,app1,app2"
+
+# Pattern 6: Match exact name only
+argocd proj windows add default \
+  --kind deny \
+  --schedule "0 22 * * *" \
+  --duration 6h \
+  --applications "sync-waves"
+
+# List all windows with their patterns
+argocd proj windows list default
+```
+
+**View Patterns in Configuration:**
+
+```bash
+# Method 1: Using kubectl jsonpath (cleanest output)
+kubectl get appproject default -n argocd -o jsonpath='{range .spec.syncWindows[*]}{.kind}:{.applications[*]}{"\n"}{end}'
+
+# Expected output:
+# deny:*
+# allow:sync-*
+# deny:*-prod
+# allow:*-dev-*
+# allow:sync-waves app1 app2
+# deny:sync-waves
+
+# Method 2: View full YAML for each window
+argocd proj windows list default -o yaml
+
+# Method 3: View just the applications field (outputs raw JSON array)
+kubectl get appproject default -n argocd -o jsonpath='{.spec.syncWindows[*].applications}'
+
+# Method 4: See ID, kind, and applications together
+for i in {0..5}; do
+  echo -n "ID $i: "
+  kubectl get appproject default -n argocd -o jsonpath="{.spec.syncWindows[$i].kind}:" 2>/dev/null
+  kubectl get appproject default -n argocd -o jsonpath="{.spec.syncWindows[$i].applications[*]}" 2>/dev/null
+  echo ""
+done
+```
+
+**Testing Pattern Matching:**
+
+Create test applications with different names to see which patterns match:
+
+```bash
+# Test 1: App matching prefix pattern "sync-*"
+argocd app create sync-demo \
+  --repo https://github.com/$GITHUB_USER/sync-waves-demo.git \
+  --path . \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace wave-demo \
+  --sync-policy automated \
+  --auto-prune \
+  --self-heal
+
+# Wait for initial sync
+sleep 5
+
+# Check which windows match
+echo "=== sync-demo matches ==="
+argocd app get sync-demo | grep -E "SyncWindow|Assigned"
+
+# Test 2: App matching suffix pattern "*-prod"
+argocd app create api-prod \
+  --repo https://github.com/$GITHUB_USER/sync-waves-demo.git \
+  --path . \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace wave-demo \
+  --sync-policy automated \
+  --auto-prune \
+  --self-heal
+
+# Wait for initial sync
+sleep 5
+
+# Check which windows match
+echo "=== api-prod matches ==="
+argocd app get api-prod | grep -E "SyncWindow|Assigned"
+
+# Test 3: App matching middle pattern "*-dev-*"
+argocd app create app-dev-v1 \
+  --repo https://github.com/$GITHUB_USER/sync-waves-demo.git \
+  --path . \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace wave-demo \
+  --sync-policy automated \
+  --auto-prune \
+  --self-heal
+
+# Wait for initial sync
+sleep 5
+
+# Check which windows match
+echo "=== app-dev-v1 matches ==="
+argocd app get app-dev-v1 | grep -E "SyncWindow|Assigned"
+
+# Test 4: App with no pattern matches (except *)
+argocd app create myapp \
+  --repo https://github.com/$GITHUB_USER/sync-waves-demo.git \
+  --path . \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace wave-demo \
+  --sync-policy automated \
+  --auto-prune \
+  --self-heal
+
+# Wait for initial sync
+sleep 5
+
+# Check which windows match
+echo "=== myapp matches ==="
+argocd app get myapp | grep -E "SyncWindow|Assigned"
+
+# View all apps with their sync status
+argocd app list
+```
+
+**Expected Pattern Matches:**
+
+| App Name | `*` | `sync-*` | `*-prod` | `*-dev-*` | `sync-waves,app1,app2` | `sync-waves` |
+|----------|-----|----------|----------|-----------|------------------------|--------------|
+| sync-demo | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| api-prod | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| app-dev-v1 | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| myapp | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| sync-waves | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+
+**Cleanup:**
+
+```bash
+# IMPORTANT: Remove sync windows FIRST to avoid "permission denied" errors
+# If deny windows are active, app deletion will be blocked
+
+# Step 1: Remove all sync windows
+echo "Step 1: Removing all sync windows..."
+for id in {0..5}; do
+  argocd proj windows delete default $id 2>/dev/null || true
+done
+
+# Verify windows removed
+WINDOW_COUNT=$(argocd proj windows list default | grep -E "^[0-9]" | wc -l)
+if [ "$WINDOW_COUNT" -eq 0 ]; then
+  echo "✓ All sync windows removed"
+else
+  echo "⚠ Warning: $WINDOW_COUNT sync windows still exist"
+  argocd proj windows list default
+fi
+
+# Step 2: Delete all test apps (now that windows are removed)
+echo ""
+echo "Step 2: Deleting test applications..."
+argocd app delete sync-demo --yes --cascade 2>/dev/null || echo "  sync-demo already deleted"
+argocd app delete api-prod --yes --cascade 2>/dev/null || echo "  api-prod already deleted"
+argocd app delete app-dev-v1 --yes --cascade 2>/dev/null || echo "  app-dev-v1 already deleted"
+argocd app delete myapp --yes --cascade 2>/dev/null || echo "  myapp already deleted"
+
+# Step 3: Verify all apps are deleted
+echo ""
+echo "Step 3: Verifying applications cleanup..."
+sleep 3
+REMAINING_APPS=$(argocd app list | grep -E "sync-demo|api-prod|app-dev-v1|myapp" | wc -l)
+if [ "$REMAINING_APPS" -eq 0 ]; then
+  echo "✓ All test apps deleted"
+else
+  echo "⚠ Warning: $REMAINING_APPS test apps still exist"
+  argocd app list | grep -E "sync-demo|api-prod|app-dev-v1|myapp"
+fi
+
+# Step 4: Check Kubernetes resources
+echo ""
+echo "Step 4: Checking wave-demo namespace..."
+kubectl get all -n wave-demo 2>/dev/null || echo "✓ Namespace cleaned up or empty"
+
+echo ""
+echo "Cleanup complete"
+```
+
+**Troubleshooting Cleanup Issues:**
+
+If you get "permission denied" errors when deleting apps:
+
+```bash
+# This happens when deny windows are active and blocking operations
+
+# Solution 1: Remove ALL sync windows first
+argocd proj windows list default
+for id in {0..10}; do
+  argocd proj windows delete default $id 2>/dev/null || true
+done
+
+# Solution 2: Enable manual sync on deny windows
+argocd proj windows enable-manual-sync default <WINDOW_ID>
+
+# Solution 3: Force delete using kubectl (last resort)
+kubectl delete application sync-demo -n argocd
+kubectl delete application api-prod -n argocd
+kubectl delete application app-dev-v1 -n argocd
+kubectl delete application myapp -n argocd
+```
 
 ---
 
@@ -620,19 +1008,36 @@ argocd app get sync-waves | grep "Sync Window"
 ## Cleanup
 
 ```bash
-# Delete the applications
-argocd app delete sync-demo --yes
-argocd app delete sync-waves --yes
+# Step 1: Remove any remaining sync windows
+echo "Removing sync windows..."
+for id in {0..10}; do
+  argocd proj windows delete default $id 2>/dev/null || true
+done
 
-# Delete namespaces
+# Step 2: Delete the applications
+echo "Deleting applications..."
+argocd app delete sync-waves --yes --cascade 2>/dev/null || echo "sync-waves already deleted"
+
+# Step 3: Delete the namespace
+echo "Deleting namespace..."
 kubectl delete namespace wave-demo --ignore-not-found
 
-# Remove sync window configuration
-kubectl delete configmap argocd-cm -n argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# Clean up local repositories
+# Step 4: Clean up local repositories
+echo "Cleaning up local files..."
 rm -rf ~/sync-waves-demo
+
+# Step 5: Verify cleanup
+echo ""
+echo "Verification:"
+echo "- Applications remaining:"
+argocd app list | grep sync || echo "  ✓ No sync apps found"
+echo "- Sync windows remaining:"
+argocd proj windows list default | grep -E "^[0-9]" || echo "  ✓ No sync windows found"
+echo "- Namespace status:"
+kubectl get ns wave-demo 2>/dev/null || echo "  ✓ Namespace deleted"
+
+echo ""
+echo "Cleanup complete!"
 ```
 
 ---
@@ -662,8 +1067,9 @@ argocd.argoproj.io/hook: PreSync
 # Hook deletion policy
 argocd.argoproj.io/hook-delete-policy: HookSucceeded
 
-# Skip sync
-argocd.argoproj.io/sync-options: Sync=false
+# Sync options (examples)
+argocd.argoproj.io/sync-options: Validate=false
+argocd.argoproj.io/sync-options: PruneLast=true
 ```
 
 **Key Commands:**
