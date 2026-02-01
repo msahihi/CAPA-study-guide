@@ -50,8 +50,8 @@ cd ~/helm-demo
 # Create chart structure
 helm create my-web-app
 
-# Explore the generated structure
-tree my-web-app
+# Explore the generated structure (use find instead of tree for cross-platform compatibility)
+find my-web-app -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
 ```
 
 **Expected Output:**
@@ -86,6 +86,11 @@ image:
   pullPolicy: IfNotPresent
   tag: "1.25"
 
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
 service:
   type: ClusterIP
   port: 80
@@ -111,7 +116,7 @@ env:
     value: "info"
 EOF
 
-# Update Chart.yaml with better metadata
+# Update Chart.yaml with better metadata (no dependencies)
 cat <<EOF > Chart.yaml
 apiVersion: v2
 name: my-web-app
@@ -126,6 +131,13 @@ maintainers:
   - name: Your Team
     email: team@example.com
 EOF
+
+# Remove any existing dependencies
+rm -rf charts/*.tgz charts/*/
+rm -f Chart.lock
+
+# Verify the chart is valid
+helm lint .
 ```
 
 ---
@@ -154,12 +166,12 @@ gh repo create helm-demo --public --source=. --remote=origin --push
 
 ```bash
 # Create an Argo CD application for the Helm chart
+# Note: Do NOT use --helm-chart flag for Git repos, only use --path
 argocd app create my-web-app-helm \
   --repo https://github.com/$GITHUB_USER/helm-demo.git \
   --path my-web-app \
   --dest-server https://kubernetes.default.svc \
-  --dest-namespace default \
-  --helm-chart my-web-app
+  --dest-namespace default
 
 # Sync the application
 argocd app sync my-web-app-helm
@@ -369,7 +381,7 @@ helm  prometheus-community   https://prometheus-community.github.io/helm-charts 
 argocd app create redis \
   --repo https://charts.bitnami.com/bitnami \
   --helm-chart redis \
-  --revision 18.4.0 \
+  --revision 24.1.2 \
   --dest-server https://kubernetes.default.svc \
   --dest-namespace default \
   --helm-set auth.password=mysecretpassword \
@@ -534,11 +546,11 @@ appVersion: "1.0"
 
 dependencies:
   - name: postgresql
-    version: 12.x.x
+    version: 18.2.3
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: redis
-    version: 18.x.x
+    version: 24.1.2
     repository: https://charts.bitnami.com/bitnami
     condition: redis.enabled
 EOF
@@ -632,65 +644,114 @@ git push
 cd ~/helm-demo
 mkdir -p kustomize-helm/{base,overlays/{dev,prod}}
 
-# Base kustomization
+# First, render base Helm templates to static manifests
+helm template my-web-app ./my-web-app \
+  --namespace default \
+  --values ./my-web-app/values.yaml \
+  > kustomize-helm/base/manifests.yaml
+
+# Create base kustomization
 cat <<EOF > kustomize-helm/base/kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-helmCharts:
-- name: my-web-app
-  repo: https://github.com/$GITHUB_USER/helm-demo.git
-  releaseName: my-web-app
-  namespace: default
-  valuesInline:
-    replicaCount: 2
-    image:
-      repository: nginx
-      tag: "1.25"
+resources:
+- manifests.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize-helm
 EOF
 
-# Dev overlay
+# Dev overlay with patches to modify replicas and image
 cat <<EOF > kustomize-helm/overlays/dev/kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: dev
+
 resources:
 - ../../base
 
-helmCharts:
-- name: my-web-app
-  releaseName: my-web-app-dev
-  namespace: dev
-  valuesInline:
-    replicaCount: 1
-    image:
-      tag: "latest"
-    env:
-      - name: ENVIRONMENT
-        value: "dev"
+patches:
+- target:
+    kind: Deployment
+    name: my-web-app
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 1
+    - op: replace
+      path: /spec/template/spec/containers/0/image
+      value: nginx:latest
+
+commonLabels:
+  environment: dev
 EOF
 
-# Prod overlay
+# Prod overlay with patches for production settings
 cat <<EOF > kustomize-helm/overlays/prod/kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: prod
+
 resources:
 - ../../base
 
-helmCharts:
-- name: my-web-app
-  releaseName: my-web-app-prod
-  namespace: prod
-  valuesInline:
-    replicaCount: 5
-    image:
-      tag: "1.25"
-    env:
-      - name: ENVIRONMENT
-        value: "production"
+patches:
+- target:
+    kind: Deployment
+    name: my-web-app
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 5
+
+commonLabels:
+  environment: production
 EOF
+
+# Push to Git
+git add kustomize-helm/
+git commit -m "Add Kustomize overlays for Helm chart"
+git push origin main
 ```
+
+### Task 7.2: Deploy with Argo CD
+
+```bash
+# Create namespaces
+kubectl create namespace dev
+kubectl create namespace prod
+
+# Create Argo CD application for dev environment
+argocd app create my-web-app-kustomize-dev \
+  --repo https://github.com/$GITHUB_USER/helm-demo.git \
+  --path kustomize-helm/overlays/dev \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace dev
+
+# Create Argo CD application for prod environment
+argocd app create my-web-app-kustomize-prod \
+  --repo https://github.com/$GITHUB_USER/helm-demo.git \
+  --path kustomize-helm/overlays/prod \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace prod
+
+# Sync both applications
+argocd app sync my-web-app-kustomize-dev
+argocd app sync my-web-app-kustomize-prod
+
+# Check status
+argocd app get my-web-app-kustomize-dev
+argocd app get my-web-app-kustomize-prod
+
+# Verify deployments
+kubectl get all -n dev
+kubectl get all -n prod
+```
+
+**Question:** How does combining Helm with Kustomize give you more flexibility than using either tool alone?
 
 ---
 
@@ -742,23 +803,55 @@ EOF
 ## Cleanup
 
 ```bash
-# Delete all Helm applications
-argocd app delete my-web-app-helm --yes
-argocd app delete my-web-app-prod --yes
-argocd app delete my-web-app-staging --yes
-argocd app delete redis --yes
-argocd app delete custom-release --yes
+# Delete all Helm applications from Parts 1-6
+echo "Deleting basic Helm applications..."
+argocd app delete my-web-app-helm --yes --cascade 2>/dev/null || true
+argocd app delete my-web-app-prod --yes --cascade 2>/dev/null || true
+argocd app delete my-web-app-staging --yes --cascade 2>/dev/null || true
+argocd app delete redis --yes --cascade 2>/dev/null || true
+argocd app delete custom-release --yes --cascade 2>/dev/null || true
+
+# Delete Kustomize + Helm applications from Part 7
+echo "Deleting Kustomize+Helm applications..."
+argocd app delete my-web-app-kustomize-dev --yes --cascade 2>/dev/null || true
+argocd app delete my-web-app-kustomize-prod --yes --cascade 2>/dev/null || true
+
+# Delete Challenge Exercise applications (if created)
+echo "Deleting challenge exercise applications..."
+argocd app delete backend-dev --yes --cascade 2>/dev/null || true
+argocd app delete frontend-dev --yes --cascade 2>/dev/null || true
+argocd app delete backend-staging --yes --cascade 2>/dev/null || true
+argocd app delete frontend-staging --yes --cascade 2>/dev/null || true
+argocd app delete backend-prod --yes --cascade 2>/dev/null || true
+argocd app delete frontend-prod --yes --cascade 2>/dev/null || true
+
+# Wait for applications to be deleted
+echo "Waiting for applications to be deleted..."
+sleep 10
+
+# Verify all apps are deleted
+argocd app list
 
 # Delete namespaces
-kubectl delete namespace production staging --ignore-not-found
+echo "Deleting namespaces..."
+kubectl delete namespace default production staging dev prod --ignore-not-found
 
-# Remove Helm repositories
-argocd repo rm https://charts.bitnami.com/bitnami
-argocd repo rm https://prometheus-community.github.io/helm-charts
+# Remove Helm repositories (if added)
+echo "Removing Helm repositories..."
+argocd repo rm https://charts.bitnami.com/bitnami 2>/dev/null || true
+argocd repo rm https://prometheus-community.github.io/helm-charts 2>/dev/null || true
+
+# Remove Git repository
+argocd repo rm https://github.com/$GITHUB_USER/helm-demo.git 2>/dev/null || true
 
 # Clean up local files
+echo "Cleaning up local files..."
 rm -rf ~/helm-demo
+
+echo "Cleanup complete"
 ```
+
+**Note:** The `--cascade` flag ensures that Kubernetes resources created by the applications are also deleted, not just the Argo CD Application objects.
 
 ---
 

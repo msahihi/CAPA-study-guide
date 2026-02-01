@@ -14,10 +14,11 @@
 ## Prerequisites
 
 - Completed Labs 01-05
-- Argo CD running and accessible
-- Access to create multiple Kubernetes clusters (minikube, kind, or k3d)
+- Minikube installed (v1.30.0 or later)
 - Understanding of kubeconfig and cluster contexts
 - kubectl CLI configured
+- Docker Desktop or Docker Engine running
+- At least 8GB RAM available for multiple clusters
 
 ## Estimated Time
 
@@ -27,125 +28,98 @@
 
 ## Part 1: Setting Up Multiple Clusters
 
-### Task 1.1: Create Additional Kubernetes Clusters
+### Task 1.1: Create Multiple Clusters
 
-We'll create three clusters to simulate different environments:
+We'll create three **separate Kubernetes clusters** to simulate different environments using minikube profiles with a shared Docker network.
 
-- **cluster-dev:** Development cluster
-- **cluster-staging:** Staging cluster
-- **cluster-prod:** Production cluster
+**Note**: Multi-cluster means multiple **separate clusters** (each with its own control plane), not multi-node (multiple worker nodes in one cluster).
 
-**Using kind:**
+Clusters:
 
-```bash
-# Create development cluster
-cat <<EOF | kind create cluster --name dev --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  extraPortMappings:
-  - containerPort: 30080
-    hostPort: 30080
-  - containerPort: 30443
-    hostPort: 30443
-EOF
+- **management:** Management cluster where Argo CD runs
+- **staging:** Staging environment cluster
+- **prod:** Production environment cluster
 
-# Create staging cluster
-cat <<EOF | kind create cluster --name staging --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  extraPortMappings:
-  - containerPort: 31080
-    hostPort: 31080
-EOF
-
-# Create production cluster
-cat <<EOF | kind create cluster --name prod --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  extraPortMappings:
-  - containerPort: 32080
-    hostPort: 32080
-EOF
-
-# Verify all clusters are running
-kind get clusters
-```
-
-**Using minikube:**
+**Key Concept**: All clusters must be on the same Docker network so Argo CD (running in the management cluster) can reach the other clusters.
 
 ```bash
-# Create development cluster
-minikube start -p dev --cpus=2 --memory=2048
+# Clean up any existing clusters
+minikube delete --all 2>/dev/null || true
 
-# Create staging cluster
-minikube start -p staging --cpus=2 --memory=2048
+# Create management cluster on the default bridge network
+minikube start -p management --kubernetes-version=v1.35.0 --network=bridge --memory=2048 --cpus=2
 
-# Create production cluster
-minikube start -p prod --cpus=2 --memory=2048
+# Create staging cluster on the default bridge network
+minikube start -p staging --kubernetes-version=v1.35.0 --network=bridge --memory=2048 --cpus=2
 
-# List all clusters
+# Create production cluster on the default bridge network
+minikube start -p prod --kubernetes-version=v1.35.0 --network=bridge --memory=2048 --cpus=2
+
+# List all minikube clusters
 minikube profile list
+
+# Verify all clusters are accessible
+kubectl get nodes --context management
+kubectl get nodes --context staging
+kubectl get nodes --context prod
 ```
 
-**Using k3d:**
+**Expected Output:**
 
-```bash
-# Create development cluster
-k3d cluster create dev -p "30080:80@loadbalancer"
-
-# Create staging cluster
-k3d cluster create staging -p "31080:80@loadbalancer"
-
-# Create production cluster
-k3d cluster create prod -p "32080:80@loadbalancer"
-
-# List clusters
-k3d cluster list
+```
+|-----------+----------+---------+--------------+---------+----------+---------|
+| Profile   | VM Driver| Runtime |      IP      | Version | Status   | Nodes   |
+|-----------+----------+---------+--------------+---------+----------+---------|
+| management| docker   | docker  | 172.17.0.3   | v1.35.0 | Running  | 1       |
+| staging   | docker   | docker  | 172.17.0.4   | v1.35.0 | Running  | 1       |
+| prod      | docker   | docker  | 172.17.0.5   | v1.35.0 | Running  | 1       |
+|-----------+----------+---------+--------------+---------+----------+---------|
 ```
 
-### Task 1.2: Verify Cluster Contexts
+**Why use the default bridge network?**
+
+- All minikube clusters share the same default Docker bridge network
+- Each cluster gets a unique IP on the bridge network (172.17.0.x)
+- Argo CD (running in the management cluster) can reach other clusters natively
+- This is the simplest approach for local multi-cluster setups
+
+### Task 1.2: Verify Cluster Contexts and Network
 
 ```bash
 # List all Kubernetes contexts
 kubectl config get-contexts
 
 # Test connectivity to each cluster
-kubectl config use-context kind-dev
-kubectl cluster-info
+kubectl get nodes --context management
+kubectl get nodes --context staging
+kubectl get nodes --context prod
 
-kubectl config use-context kind-staging
-kubectl cluster-info
-
-kubectl config use-context kind-prod
-kubectl cluster-info
-
-# Assume Argo CD is running in the first cluster (or separate mgmt cluster)
-# For this lab, we'll use the 'dev' cluster as the Argo CD management cluster
-kubectl config use-context kind-dev
+# Verify all clusters are on the same Docker network
+docker network inspect bridge --format '{{json .Containers}}' | jq -r '.[] | "\(.Name): \(.IPv4Address)"'
 ```
 
 **Expected Output:**
 
 ```
-CURRENT   NAME           CLUSTER        AUTHINFO       NAMESPACE
-*         kind-dev       kind-dev       kind-dev
-          kind-staging   kind-staging   kind-staging
-          kind-prod      kind-prod      kind-prod
+CURRENT   NAME        CLUSTER     AUTHINFO    NAMESPACE
+*         management  management  management
+          staging     staging     staging
+          prod        prod        prod
+```
+
+Network output should show all three containers:
+
+```
+management: 172.17.0.3/16
+staging: 172.17.0.4/16
+prod: 172.17.0.5/16
 ```
 
 ### Task 1.3: Install Argo CD on Management Cluster
 
-If Argo CD is not yet installed on your management cluster:
-
 ```bash
-# Use dev cluster as management cluster
-kubectl config use-context kind-dev
+# Switch to management cluster
+kubectl config use-context management
 
 # Create argocd namespace
 kubectl create namespace argocd
@@ -156,73 +130,189 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 # Wait for pods to be ready
 kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
 
-# Port forward
-kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+# Get admin password
+ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+echo "Argo CD admin password: $ARGOCD_PASSWORD"
+
+# Port forward in background (or run in separate terminal)
+kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
+
+# Wait for port-forward to be ready
+sleep 5
 
 # Login
-argocd login localhost:8080 --username admin --password $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d) --insecure
+argocd login localhost:8080 --username admin --password "$ARGOCD_PASSWORD" --insecure
 ```
 
 ---
 
 ## Part 2: Adding External Clusters to Argo CD
 
-### Task 2.1: Add Clusters Using CLI
+### Task 2.1: Add Clusters Using Manual Registration
+
+The `argocd cluster add` command can have issues with minikube's docker driver setup. We'll manually register the clusters by creating the necessary service accounts and secrets.
+
+**What we'll do:**
+
+1. Create service accounts in each cluster with admin permissions
+2. Extract the authentication tokens
+3. Register the clusters with Argo CD using Docker network IPs
 
 ```bash
-# Switch to management cluster context
-kubectl config use-context kind-dev
+# Switch to management cluster context (where Argo CD is installed)
+kubectl config use-context management
 
-# List current clusters in Argo CD
+# List current clusters in Argo CD (should show only in-cluster)
 argocd cluster list
 
-# Add staging cluster
-kubectl config use-context kind-staging
-argocd cluster add kind-staging --name staging
+# Get Docker network IPs for the clusters
+STAGING_IP=$(docker inspect staging -f '{{index .NetworkSettings.Networks "bridge" "IPAddress"}}')
+PROD_IP=$(docker inspect prod -f '{{index .NetworkSettings.Networks "bridge" "IPAddress"}}')
 
-# Add production cluster
-kubectl config use-context kind-prod
-argocd cluster add kind-prod --name prod
+echo "Staging cluster IP: $STAGING_IP"
+echo "Prod cluster IP: $PROD_IP"
 
-# Switch back to management cluster
-kubectl config use-context kind-dev
+# Test connectivity from management cluster (where Argo CD runs)
+echo "Testing connectivity from management cluster..."
+docker exec management curl -k -s "https://${STAGING_IP}:8443/version" >/dev/null && echo "✓ Staging reachable"
+docker exec management curl -k -s "https://${PROD_IP}:8443/version" >/dev/null && echo "✓ Prod reachable"
 
-# List clusters again
+# Function to register a cluster
+register_cluster() {
+  CLUSTER_NAME=$1
+  CLUSTER_IP=$2
+
+  echo "Registering cluster: $CLUSTER_NAME"
+
+  # Create service account in target cluster
+  kubectl config use-context $CLUSTER_NAME
+
+  kubectl create serviceaccount argocd-manager -n kube-system
+
+  # Create ClusterRole with full permissions
+  kubectl create clusterrole argocd-manager-role --verb='*' --resource='*.*'
+
+  # Create ClusterRoleBinding
+  kubectl create clusterrolebinding argocd-manager-role-binding \
+    --clusterrole=argocd-manager-role \
+    --serviceaccount=kube-system:argocd-manager
+
+  # Create long-lived token secret
+  kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-manager-token
+  namespace: kube-system
+  annotations:
+    kubernetes.io/service-account.name: argocd-manager
+type: kubernetes.io/service-account-token
+EOF
+
+  # Wait for token to be created
+  sleep 2
+
+  # Extract token and CA certificate
+  SA_TOKEN=$(kubectl get secret argocd-manager-token -n kube-system -o jsonpath='{.data.token}' | base64 -d)
+  CA_CERT=$(kubectl get secret argocd-manager-token -n kube-system -o jsonpath='{.data.ca\.crt}')
+
+  # Switch back to management cluster
+  kubectl config use-context management
+
+  # Create cluster secret in Argo CD namespace
+  kubectl create secret generic cluster-$CLUSTER_NAME \
+    --namespace argocd \
+    --from-literal=name=$CLUSTER_NAME \
+    --from-literal=server="https://${CLUSTER_IP}:8443" \
+    --from-literal=config="{\"bearerToken\":\"${SA_TOKEN}\",\"tlsClientConfig\":{\"insecure\":false,\"caData\":\"${CA_CERT}\"}}"
+
+  # Add required labels
+  kubectl label secret cluster-$CLUSTER_NAME -n argocd \
+    argocd.argoproj.io/secret-type=cluster
+
+  echo "✓ $CLUSTER_NAME registered successfully"
+}
+
+# Register staging cluster
+register_cluster staging $STAGING_IP
+
+# Register prod cluster
+register_cluster prod $PROD_IP
+
+# Verify clusters are registered
 argocd cluster list
 ```
 
 **Expected Output:**
 
 ```
-SERVER                          NAME      VERSION  STATUS      MESSAGE                                              PROJECT
-https://kubernetes.default.svc  in-cluster  1.27     Successful
-https://staging-server:6443     staging     1.27     Successful
-https://prod-server:6443        prod        1.27     Successful
+SERVER                          NAME        VERSION  STATUS   MESSAGE
+https://kubernetes.default.svc  in-cluster           Unknown  Cluster has no applications and is not being monitored.
+https://172.17.0.4:8443         staging              Unknown  Cluster has no applications and is not being monitored.
+https://172.17.0.5:8443         prod                 Unknown  Cluster has no applications and is not being monitored.
 ```
+
+**Note**: The IP addresses (172.17.0.x) are from the default Docker bridge network. The "Unknown" status is expected when clusters have no applications deployed yet.
+
+**What the manual registration does:**
+
+1. Creates a service account named `argocd-manager` in the target cluster's `kube-system` namespace
+2. Creates a ClusterRole with full cluster admin permissions (`*.*` resources, all verbs)
+3. Creates a ClusterRoleBinding to grant the service account cluster admin access
+4. Creates a long-lived token secret for the service account
+5. Extracts the bearer token and CA certificate from the secret
+6. Creates a cluster secret in the Argo CD namespace with:
+   - Cluster name (staging/prod)
+   - Server URL using Docker bridge network IP (https://172.17.0.x:8443)
+   - Bearer token for authentication
+   - CA certificate for TLS verification
+
+**Why manual registration:**
+
+- The `argocd cluster add` CLI command can fail with minikube's docker driver
+- Manual registration gives us full control over the server URL from the start
+- We directly use Docker bridge network IPs that Argo CD (running in management cluster) can reach
+- This approach is more reliable for local minikube multi-cluster setups
+
+**Security Note:**
+
+The service account has full cluster admin permissions. In production, you should:
+
+- Limit permissions to only what Argo CD needs
+- Use namespace-scoped roles where possible
+- Rotate tokens regularly
+- Use short-lived tokens with token rotation
 
 **Question:** What happens when you add a cluster? What resources are created?
 
 ### Task 2.2: Verify Cluster Registration
 
 ```bash
+# Switch to management cluster context
+kubectl config use-context management
+
 # Check the secrets created for cluster credentials
 kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=cluster
 
-# View cluster details
+# View cluster details via Argo CD CLI
 argocd cluster get staging
 argocd cluster get prod
 
-# Check what was installed in remote clusters
-kubectl config use-context kind-staging
+# To check what was installed in remote clusters, use minikube's contexts directly
+# (They still work with localhost from your host machine)
+
+# Check staging cluster
+kubectl config use-context staging
 kubectl get serviceaccount -n kube-system | grep argocd
 kubectl get clusterrole | grep argocd
 
 # Check prod cluster
-kubectl config use-context kind-prod
+kubectl config use-context prod
 kubectl get serviceaccount -n kube-system | grep argocd
+kubectl get clusterrole | grep argocd
 
 # Return to management cluster
-kubectl config use-context kind-dev
+kubectl config use-context management
 ```
 
 **Understanding Cluster Registration:**
@@ -234,16 +324,27 @@ kubectl config use-context kind-dev
 ### Task 2.3: Label Clusters
 
 ```bash
-# Add labels to clusters for easier management
+# Make sure you're in the management cluster context
+kubectl config use-context management
+
+# Verify you're logged into Argo CD
+argocd cluster list
+
+# Add labels to staging cluster
 argocd cluster set staging --label environment=staging --label tier=non-prod
+
+# Add labels to prod cluster
 argocd cluster set prod --label environment=production --label tier=prod
 
-# Add label to in-cluster
-argocd cluster set https://kubernetes.default.svc --label environment=development --label tier=non-prod
+# Note: You cannot add labels to in-cluster using argocd cluster set
+# This is a limitation of Argo CD - the in-cluster is read-only via CLI
+# Labels must be added directly to the Secret resource if needed
 
 # List clusters with labels
 argocd cluster list -o wide
 ```
+
+**Note**: The `in-cluster` (management cluster where Argo CD is running) cannot be labeled using `argocd cluster set` due to permission restrictions. If you need to label it, you would need to manually edit the cluster Secret in the `argocd` namespace.
 
 ---
 
@@ -374,17 +475,17 @@ argocd app get web-app-prod
 
 ```bash
 # Check staging cluster
-kubectl config use-context kind-staging
+kubectl config use-context staging
 kubectl get all -n web-app
 kubectl get pods -n web-app -o wide
 
 # Check production cluster
-kubectl config use-context kind-prod
+kubectl config use-context prod
 kubectl get all -n web-app
 kubectl get pods -n web-app -o wide
 
 # Return to management cluster
-kubectl config use-context kind-dev
+kubectl config use-context management
 ```
 
 ---
@@ -425,19 +526,25 @@ resources:
 
 patches:
 - patch: |-
-    - op: replace
-      path: /spec/replicas
-      value: 2
-    - op: replace
-      path: /spec/template/spec/containers/0/env/0/value
-      value: "staging"
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web-app
+      labels:
+        environment: staging
+        tier: non-prod
+    spec:
+      replicas: 2
+      template:
+        spec:
+          containers:
+          - name: web
+            env:
+            - name: CLUSTER_NAME
+              value: "staging"
   target:
     kind: Deployment
     name: web-app
-
-commonLabels:
-  environment: staging
-  tier: non-prod
 EOF
 
 # Create production overlay
@@ -452,31 +559,32 @@ resources:
 
 patches:
 - patch: |-
-    - op: replace
-      path: /spec/replicas
-      value: 5
-    - op: replace
-      path: /spec/template/spec/containers/0/env/0/value
-      value: "production"
-    - op: replace
-      path: /spec/template/spec/containers/0/resources/requests/cpu
-      value: "100m"
-    - op: replace
-      path: /spec/template/spec/containers/0/resources/requests/memory
-      value: "128Mi"
-    - op: replace
-      path: /spec/template/spec/containers/0/resources/limits/cpu
-      value: "200m"
-    - op: replace
-      path: /spec/template/spec/containers/0/resources/limits/memory
-      value: "256Mi"
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web-app
+      labels:
+        environment: production
+        tier: prod
+    spec:
+      replicas: 5
+      template:
+        spec:
+          containers:
+          - name: web
+            env:
+            - name: CLUSTER_NAME
+              value: "production"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
   target:
     kind: Deployment
     name: web-app
-
-commonLabels:
-  environment: production
-  tier: prod
 EOF
 
 # Commit changes
@@ -488,6 +596,10 @@ git push
 ### Task 4.2: Update Applications to Use Overlays
 
 ```bash
+# First, delete the existing deployments to avoid immutable field errors
+kubectl delete deployment web-app -n web-app --context staging
+kubectl delete deployment web-app -n web-app --context prod
+
 # Update staging application
 argocd app set web-app-staging --path overlays/staging
 
@@ -499,15 +611,15 @@ argocd app sync web-app-staging
 argocd app sync web-app-prod
 
 # Verify replica counts
-kubectl config use-context kind-staging
+kubectl config use-context staging
 kubectl get deployment web-app -n web-app -o jsonpath='{.spec.replicas}'
 echo " replicas in staging"
 
-kubectl config use-context kind-prod
+kubectl config use-context prod
 kubectl get deployment web-app -n web-app -o jsonpath='{.spec.replicas}'
 echo " replicas in production"
 
-kubectl config use-context kind-dev
+kubectl config use-context management
 ```
 
 ---
@@ -660,6 +772,7 @@ spec:
 EOF
 
 # This creates applications for each combination of overlay and cluster
+kubectl apply -f applicationset-matrix.yaml -n argocd
 ```
 
 ---
@@ -743,12 +856,12 @@ argocd cluster list
 argocd app sync critical-service-backup
 
 # Verify application is running on backup cluster
-kubectl config use-context kind-staging
+kubectl config use-context staging
 kubectl get all -n critical
 
 # Restore production cluster
-kubectl config use-context kind-dev
-argocd cluster add kind-prod --name prod
+kubectl config use-context management
+argocd cluster add prod --name prod
 
 # Add back labels
 argocd cluster set prod --label environment=production --label tier=prod
@@ -879,20 +992,18 @@ kubectl delete applicationset -n argocd --all
 argocd cluster rm staging --yes
 argocd cluster rm prod --yes
 
-# Delete kind clusters
-kind delete cluster --name dev
-kind delete cluster --name staging
-kind delete cluster --name prod
-
-# Or for minikube
-minikube delete -p dev
+# Delete minikube clusters
 minikube delete -p staging
 minikube delete -p prod
+minikube delete -p management
 
-# Or for k3d
-k3d cluster delete dev
-k3d cluster delete staging
-k3d cluster delete prod
+# Delete the shared Docker network
+docker network rm argocd-network 2>/dev/null || true
+
+# Clean up kubeconfig entries (minikube delete usually does this automatically)
+kubectl config delete-context management 2>/dev/null || true
+kubectl config delete-context staging 2>/dev/null || true
+kubectl config delete-context prod 2>/dev/null || true
 
 # Clean up local files
 rm -rf ~/multi-cluster-app
@@ -1055,7 +1166,7 @@ kubectl config get-contexts
 
 ```bash
 # Switch to management cluster
-kubectl config use-context kind-mgmt
+kubectl config use-context kind-management
 
 # Install Argo CD
 kubectl create namespace argocd
@@ -1071,24 +1182,24 @@ argocd login localhost:8080 --username admin --password $(kubectl -n argocd get 
 
 ```bash
 # Register development clusters
-argocd cluster add kind-dev-east --name dev-east
+argocd cluster add minikube-east --name dev-east
 argocd cluster set dev-east --label environment=development --label region=east --label tier=dev
 
-argocd cluster add kind-dev-west --name dev-west
+argocd cluster add minikube-west --name dev-west
 argocd cluster set dev-west --label environment=development --label region=west --label tier=dev
 
 # Register staging clusters
-argocd cluster add kind-staging-east --name staging-east
+argocd cluster add staging-east --name staging-east
 argocd cluster set staging-east --label environment=staging --label region=east --label tier=non-prod
 
-argocd cluster add kind-staging-west --name staging-west
+argocd cluster add staging-west --name staging-west
 argocd cluster set staging-west --label environment=staging --label region=west --label tier=non-prod --label dr-role=passive
 
 # Register production clusters
-argocd cluster add kind-prod-east --name prod-east
+argocd cluster add prod-east --name prod-east
 argocd cluster set prod-east --label environment=production --label region=east --label tier=prod --label dr-role=active
 
-argocd cluster add kind-prod-west --name prod-west
+argocd cluster add prod-west --name prod-west
 argocd cluster set prod-west --label environment=production --label region=west --label tier=prod --label dr-role=active
 
 # List all clusters with labels
@@ -1626,9 +1737,9 @@ echo "Region | Dev | Staging | Production"
 echo "-------|-----|---------|------------"
 
 for region in east west; do
-  dev=$(kubectl --context kind-dev-$region get pods -n microservices 2>/dev/null | wc -l || echo 0)
-  stg=$(kubectl --context kind-staging-$region get pods -n microservices 2>/dev/null | wc -l || echo 0)
-  prd=$(kubectl --context kind-prod-$region get pods -n microservices 2>/dev/null | wc -l || echo 0)
+  dev=$(kubectl --context minikube-$region get pods -n microservices 2>/dev/null | wc -l || echo 0)
+  stg=$(kubectl --context staging-$region get pods -n microservices 2>/dev/null | wc -l || echo 0)
+  prd=$(kubectl --context prod-$region get pods -n microservices 2>/dev/null | wc -l || echo 0)
   printf "%-6s | %-3s | %-7s | %-10s\n" "$region" "$dev" "$stg" "$prd"
 done
 
