@@ -80,7 +80,7 @@ Projects in Argo CD control:
 argocd proj create dev-team \
   --description "Development team project" \
   --dest https://kubernetes.default.svc,dev-* \
-  --src https://github.com/*
+  --src https://github.com/argoproj/*
 
 # View the created project
 argocd proj get dev-team
@@ -91,7 +91,7 @@ argocd proj get dev-team
 ```
 Name:                        dev-team
 Description:                 Development team project
-Source Repositories:         https://github.com/*
+Source Repositories:         https://github.com/argoproj/*
 Destinations:                https://kubernetes.default.svc,dev-*
 Signature keys:              -
 Orphaned Resources:          disabled
@@ -118,7 +118,7 @@ argocd proj get dev-team
 argocd proj create prod-team \
   --description "Production team project - restricted" \
   --dest https://kubernetes.default.svc,prod-* \
-  --src https://github.com/yourorg/prod-apps.git
+  --src  https://github.com/argoproj/*
 
 # Add specific allowed resources for production
 argocd proj allow-cluster-resource prod-team apps Deployment
@@ -574,19 +574,25 @@ spec:
 ### Task 6.2: Time-Based Access (JWT Token Expiry)
 
 ```bash
-# Generate a JWT token for alice with expiry
-argocd account generate-token --account alice --expires-in 1h
+# Login as admin first to generate token for alice
+argocd login localhost:8080 --username admin --insecure
 
-# Save the token
-export ALICE_TOKEN="<generated-token>"
+# Generate a JWT token for alice with expiry (must be done as admin)
+ALICE_TOKEN=$(argocd account generate-token --account alice --expires-in 1h)
 
-# Login using token
+# Display the token
+echo "Alice's token: $ALICE_TOKEN"
+
+# Now use the token to authenticate as alice (in a new terminal or after logout)
+argocd logout localhost:8080
+
+# Login using the token instead of password
 argocd login localhost:8080 --auth-token $ALICE_TOKEN --insecure
 
-# Test access
-argocd app list
+# Test access - should work as alice
+argocd app list --server localhost:8080 --auth-token $ALICE_TOKEN
 
-# After 1 hour, the token will expire
+# After 1 hour, the token will expire and commands will fail
 ```
 
 ### Task 6.3: Application-Level Annotations for Access Control
@@ -625,25 +631,40 @@ EOF
 # Check Argo CD server logs for access events
 kubectl logs -n argocd deployment/argocd-server --tail=50 | grep -i "permission\|login\|auth"
 
-# Check application history for user actions
+# View who performed syncs on the application (with timestamps)
 argocd app history dev-test-app
 
-# View who performed recent syncs
-kubectl get events -n argocd --sort-by='.lastTimestamp' | grep Application
+# View application events (shows operations but not always the username)
+argocd app events dev-test-app
+
+# Get detailed operation info including who initiated it
+argocd app get dev-test-app -o yaml | grep -A2 "initiatedBy"
+
+# Alternative: Check who performed recent syncs for all apps
+kubectl get application -n argocd -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.operationState.operation.initiatedBy.username}{"\t"}{.status.operationState.finishedAt}{"\n"}{end}'
 ```
 
 ### Task 7.2: Monitor RBAC Policy Enforcement
 
 ```bash
-# Test policy validation
-argocd account can-i sync applications dev-team/dev-test-app --as alice
-argocd account can-i create applications dev-team/* --as bob
-argocd account can-i sync applications prod-team/prod-test-app --as alice
+# Test policy validation (must be logged in as the user to test)
 
-# Expected outputs
-# Alice can sync dev-team/dev-test-app: yes
-# Bob can create applications: no
-# Alice can sync prod-team apps: no
+# Test Alice's permissions
+argocd login localhost:8080 --username alice --password 'Alice@Dev2024!' --insecure
+argocd account can-i sync applications 'dev-team/dev-test-app'
+# Expected: yes
+argocd account can-i sync applications 'prod-team/prod-test-app'
+# Expected: no
+
+# Test Bob's permissions
+argocd login localhost:8080 --username bob --password 'Bob@Dev2024!' --insecure
+argocd account can-i get applications 'dev-team/*'
+# Expected: yes (viewer can read)
+argocd account can-i sync applications 'dev-team/dev-test-app'
+# Expected: yes (viewer cannot sync)
+
+# Login back as admin
+argocd login localhost:8080 --username admin --insecure
 ```
 
 ---
@@ -710,12 +731,25 @@ argocd account can-i sync applications prod-team/prod-test-app --as alice
 argocd login localhost:8080 --username admin --insecure
 
 # Delete test applications
-argocd app delete dev-test-app --yes
-argocd app delete prod-test-app --yes
+argocd app delete dev-test-app --yes --cascade
+argocd app delete prod-test-app --yes --cascade
+argocd app delete restricted-app --yes --cascade 2>/dev/null || true
 
-# Delete projects
-argocd proj delete dev-team
-argocd proj delete prod-team
+# Verify apps are deleted
+argocd app list
+
+# If apps still exist, force delete from Kubernetes
+kubectl delete application dev-test-app -n argocd --force --grace-period=0 2>/dev/null || true
+kubectl delete application prod-test-app -n argocd --force --grace-period=0 2>/dev/null || true
+kubectl delete application restricted-app -n argocd --force --grace-period=0 2>/dev/null || true
+
+# Verify no applications remain before deleting projects
+kubectl get application -n argocd
+
+# Now delete projects (only after apps are gone)
+# Note: Must be logged in as admin to delete projects
+argocd proj delete dev-team 2>&1 || kubectl delete appproject dev-team -n argocd
+argocd proj delete prod-team 2>&1 || kubectl delete appproject prod-team -n argocd
 
 # Delete namespaces
 kubectl delete namespace dev-app1 dev-app2 prod-app1
@@ -727,9 +761,21 @@ kubectl edit configmap argocd-cm -n argocd
 # Reset RBAC ConfigMap
 kubectl delete configmap argocd-rbac-cm -n argocd
 
-# Restart server
+# Restart server to clear cache and apply changes
 kubectl rollout restart deployment argocd-server -n argocd
+kubectl rollout status deployment argocd-server -n argocd
+
+# Wait for server to restart, then refresh UI (Ctrl+R or Cmd+R)
 ```
+
+**Troubleshooting:**
+
+1. **Applications still appear in UI:** Refresh browser (hard refresh: Ctrl+Shift+R or Cmd+Shift+R) or restart Argo CD server
+2. **Apps stuck in "Deleting" state:** Use `kubectl delete application <app-name> -n argocd --force --grace-period=0`
+3. **Permission denied when deleting projects:**
+   - Ensure you're logged in as admin: `argocd login localhost:8080 --username admin --insecure`
+   - Alternative: Use kubectl directly: `kubectl delete appproject <project-name> -n argocd`
+4. **Cannot delete project - apps still exist:** Verify all apps are deleted with `kubectl get application -n argocd`, then force delete remaining apps
 
 ---
 
