@@ -57,6 +57,7 @@ kind: Workflow
 metadata:
   generateName: dag-basic-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -90,7 +91,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -103,7 +104,8 @@ spec:
 Submit and observe the execution order:
 
 ```bash
-argo submit -n argo dag-basic.yaml --watch
+kubectl create -n argo -f dag-basic.yaml
+kubectl get workflow -n argo -w
 ```
 
 View in the UI to see the DAG visualization.
@@ -118,6 +120,7 @@ kind: Workflow
 metadata:
   generateName: dag-parallel-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -181,7 +184,7 @@ spec:
       - name: task-name
       - name: duration
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -193,7 +196,8 @@ spec:
 Submit and observe parallel execution:
 
 ```bash
-argo submit -n argo dag-parallel.yaml --watch
+kubectl create -n argo -f dag-parallel.yaml
+kubectl get workflow -n argo -w
 ```
 
 Notice how branches A, B, and C run in parallel, and finalize waits for all three.
@@ -208,6 +212,7 @@ kind: Workflow
 metadata:
   generateName: dag-diamond-
 spec:
+  serviceAccountName: argo
   entrypoint: diamond
   templates:
   - name: diamond
@@ -252,7 +257,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
 ```
@@ -260,7 +265,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo dag-diamond.yaml --watch
+kubectl create -n argo -f dag-diamond.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 2: Complex DAG Patterns (10 minutes)
@@ -275,6 +281,7 @@ kind: Workflow
 metadata:
   generateName: dag-cicd-
 spec:
+  serviceAccountName: argo
   entrypoint: ci-cd-pipeline
   arguments:
     parameters:
@@ -384,7 +391,7 @@ spec:
       parameters:
       - name: repo
     container:
-      image: alpine/git:latest
+      image: alpine/git:2.47.1
       command: [sh, -c]
       args: ["echo 'Cloning {{inputs.parameters.repo}}'; sleep 2"]
 
@@ -393,7 +400,7 @@ spec:
       parameters:
       - name: component
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -406,7 +413,7 @@ spec:
       parameters:
       - name: test-type
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -419,7 +426,7 @@ spec:
       parameters:
       - name: scan-type
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -432,7 +439,7 @@ spec:
       parameters:
       - name: environment
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -444,7 +451,8 @@ spec:
 Submit and observe the complex dependency graph:
 
 ```bash
-argo submit -n argo dag-cicd.yaml --watch
+kubectl create -n argo -f dag-cicd.yaml
+kubectl get workflow -n argo -w
 ```
 
 View the DAG in the UI to see the full pipeline visualization.
@@ -459,6 +467,7 @@ kind: Workflow
 metadata:
   generateName: dag-dataflow-
 spec:
+  serviceAccountName: argo
   entrypoint: data-pipeline
   templates:
   - name: data-pipeline
@@ -511,7 +520,7 @@ spec:
 
   - name: generate-data
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -544,7 +553,7 @@ spec:
       - name: data
       - name: operation
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -576,7 +585,7 @@ spec:
       - name: numbers-result
       - name: strings-result
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -605,7 +614,7 @@ spec:
       parameters:
       - name: combined-data
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -627,7 +636,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo dag-dataflow.yaml --watch
+kubectl create -n argo -f dag-dataflow.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 3: Conditional DAG Tasks (7 minutes)
@@ -642,6 +652,7 @@ kind: Workflow
 metadata:
   generateName: dag-conditional-
 spec:
+  serviceAccountName: argo
   entrypoint: conditional-dag
   arguments:
     parameters:
@@ -725,7 +736,7 @@ spec:
       parameters:
       - name: stage-name
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -762,6 +773,7 @@ kind: Workflow
 metadata:
   generateName: dag-result-conditional-
 spec:
+  serviceAccountName: argo
   entrypoint: result-based-dag
   templates:
   - name: result-based-dag
@@ -799,7 +811,7 @@ spec:
 
   - name: check-health
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import random
@@ -819,25 +831,25 @@ spec:
       parameters:
       - name: deploy-type
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Executing {{inputs.parameters.deploy-type}} deployment'; sleep 2"]
 
   - name: maintenance
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Entering maintenance mode'; sleep 2"]
 
   - name: verify
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Verifying deployment'; sleep 1"]
 
   - name: send-notification
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Sending notification'; sleep 1"]
 ```
@@ -865,6 +877,7 @@ kind: Workflow
 metadata:
   generateName: dag-failure-handling-
 spec:
+  serviceAccountName: argo
   entrypoint: resilient-pipeline
   templates:
   - name: resilient-pipeline
@@ -914,7 +927,7 @@ spec:
         duration: "5s"
         factor: 2
     container:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       args:
         - -c
@@ -930,13 +943,13 @@ spec:
 
   - name: safe-operation
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Executing safe operation'; sleep 1"]
 
   - name: cleanup-operation
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Cleaning up resources'; sleep 1"]
 
@@ -945,7 +958,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
 ```
@@ -971,6 +984,7 @@ kind: Workflow
 metadata:
   generateName: dag-nested-
 spec:
+  serviceAccountName: argo
   entrypoint: main-dag
   templates:
   - name: main-dag
@@ -1050,7 +1064,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo '{{inputs.parameters.message}}'; sleep 1"]
 ```
@@ -1058,7 +1072,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo dag-nested.yaml --watch
+kubectl create -n argo -f dag-nested.yaml
+kubectl get workflow -n argo -w
 ```
 
 View in the UI to see the nested DAG structure.
@@ -1075,6 +1090,7 @@ kind: Workflow
 metadata:
   generateName: comparison-steps-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -1103,7 +1119,7 @@ spec:
       parameters:
       - name: msg
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["{{inputs.parameters.msg}}"]
 ```
@@ -1116,6 +1132,7 @@ kind: Workflow
 metadata:
   generateName: comparison-dag-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -1149,7 +1166,7 @@ spec:
       parameters:
       - name: msg
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["{{inputs.parameters.msg}}"]
 ```
@@ -1188,6 +1205,7 @@ kind: Workflow
 metadata:
   generateName: ml-pipeline-
 spec:
+  serviceAccountName: argo
   entrypoint: ml-dag
   templates:
   - name: ml-dag
@@ -1263,7 +1281,7 @@ spec:
       parameters:
       - name: stage
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo '[{{inputs.parameters.stage}}] Running...'; sleep 2"]
 ```
@@ -1291,6 +1309,7 @@ kind: Workflow
 metadata:
   generateName: multi-env-deploy-
 spec:
+  serviceAccountName: argo
   entrypoint: deploy-dag
   arguments:
     parameters:
@@ -1351,7 +1370,7 @@ spec:
       parameters:
       - name: stage
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo '[{{inputs.parameters.stage}}]'; sleep 2"]
 ```
@@ -1364,10 +1383,16 @@ spec:
 # List all DAG workflows
 argo list -n argo | grep dag
 
-# View DAG structure
+# View workflow details
+kubectl get workflow -n argo <workflow-name> -o yaml
+
+# Or using Argo CLI
 argo get -n argo <workflow-name>
 
 # View logs from specific task
+kubectl logs -n argo <pod-name> -c main
+
+# Or using Argo CLI
 argo logs -n argo <workflow-name> <task-name>
 
 # Clean up

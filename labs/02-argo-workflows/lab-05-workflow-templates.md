@@ -60,11 +60,12 @@ metadata:
   name: hello-world-template
   namespace: argo
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["Hello from WorkflowTemplate!"]
 ```
@@ -131,6 +132,7 @@ metadata:
   name: greeting-template
   namespace: argo
 spec:
+  serviceAccountName: argo
   entrypoint: greet
   arguments:
     parameters:
@@ -148,7 +150,7 @@ spec:
       - name: name
       - name: times
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         greeting = "{{inputs.parameters.greeting}}"
@@ -190,6 +192,7 @@ metadata:
   name: multi-entry-template
   namespace: argo
 spec:
+  serviceAccountName: argo
   entrypoint: full-pipeline
   templates:
   - name: full-pipeline
@@ -213,19 +216,19 @@ spec:
 
   - name: build-step
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Building application...'; sleep 2"]
 
   - name: test-step
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Running tests...'; sleep 2"]
 
   - name: deploy-step
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Deploying application...'; sleep 2"]
 ```
@@ -265,6 +268,7 @@ kind: ClusterWorkflowTemplate
 metadata:
   name: common-build-template
 spec:
+  serviceAccountName: argo
   entrypoint: build-pipeline
   arguments:
     parameters:
@@ -307,7 +311,7 @@ spec:
       - name: repo
       - name: branch
     container:
-      image: alpine/git:latest
+      image: alpine/git:2.47.1
       command: [sh, -c]
       args: ["echo 'Cloning {{inputs.parameters.repo}} ({{inputs.parameters.branch}})'; sleep 1"]
 
@@ -316,13 +320,13 @@ spec:
       parameters:
       - name: env
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Building for {{inputs.parameters.env}}'; sleep 2"]
 
   - name: run-tests
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Running tests'; sleep 2"]
 ```
@@ -418,7 +422,7 @@ spec:
       - name: channel
         value: "#general"
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -432,7 +436,7 @@ spec:
       - name: subject
       - name: body
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -448,7 +452,7 @@ spec:
       - name: summary
       - name: description
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -475,6 +479,7 @@ metadata:
   name: deployment-workflow
   namespace: argo
 spec:
+  serviceAccountName: argo
   entrypoint: deploy
   arguments:
     parameters:
@@ -514,7 +519,7 @@ spec:
 
   - name: deploy-step
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Deploying to {{workflow.parameters.environment}}'; sleep 2"]
 ```
@@ -552,7 +557,7 @@ spec:
     templates:
     - name: main
       container:
-        image: alpine:latest
+        image: alpine:3.23
         command: [sh, -c]
         args:
           - |
@@ -634,7 +639,7 @@ spec:
         parameters:
         - name: type
       script:
-        image: alpine:latest
+        image: alpine:3.23
         command: [sh]
         source: |
           echo "Creating {{inputs.parameters.type}} backup at $(date)"
@@ -644,7 +649,7 @@ spec:
 
     - name: verify-task
       container:
-        image: alpine:latest
+        image: alpine:3.23
         command: [sh, -c]
         args: ["echo 'Verifying backup integrity'; sleep 1; echo 'Backup verified'"]
 
@@ -653,7 +658,7 @@ spec:
         parameters:
         - name: days
       container:
-        image: alpine:latest
+        image: alpine:3.23
         command: [sh, -c]
         args:
           - |
@@ -701,6 +706,7 @@ metadata:
   name: conditional-deploy
   namespace: argo
 spec:
+  serviceAccountName: argo
   entrypoint: main
   arguments:
     parameters:
@@ -738,12 +744,12 @@ spec:
 
   - name: build-step
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo, "Building..."]
 
   - name: test-step
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo, "Testing..."]
 
   - name: approval-step
@@ -754,7 +760,7 @@ spec:
       parameters:
       - name: env
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo, "Deploying to {{inputs.parameters.env}}"]
 ```
 
@@ -782,6 +788,7 @@ metadata:
   labels:
     version: v1
 spec:
+  serviceAccountName: argo
   entrypoint: deploy
   templates:
   - name: deploy
@@ -797,6 +804,7 @@ metadata:
   labels:
     version: v2
 spec:
+  serviceAccountName: argo
   entrypoint: deploy
   templates:
   - name: deploy
@@ -817,11 +825,12 @@ metadata:
   labels:
     version: v1
 spec:
+  serviceAccountName: argo
   entrypoint: deploy
   templates:
   - name: deploy
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo, "Deploying v1"]
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -832,11 +841,12 @@ metadata:
   labels:
     version: v2
 spec:
+  serviceAccountName: argo
   entrypoint: deploy
   templates:
   - name: deploy
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo, "Deploying v2"]
 EOF
 
@@ -876,19 +886,19 @@ spec:
       - name: repo
       - name: branch
     container:
-      image: alpine/git:latest
+      image: alpine/git:2.47.1
       command: [sh, -c]
       args: ["echo 'Cloning {{inputs.parameters.repo}} ({{inputs.parameters.branch}})'; sleep 1"]
 
   - name: run-linter
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Running linter'; sleep 1"]
 
   - name: run-unit-tests
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Running unit tests'; sleep 2"]
 
@@ -897,7 +907,7 @@ spec:
       parameters:
       - name: image-tag
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Building image: {{inputs.parameters.image-tag}}'; sleep 2"]
 
@@ -906,7 +916,7 @@ spec:
       parameters:
       - name: image-tag
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Pushing {{inputs.parameters.image-tag}} to registry'; sleep 1"]
 ---
@@ -916,6 +926,7 @@ metadata:
   name: complete-cicd-pipeline
   namespace: argo
 spec:
+  serviceAccountName: argo
   entrypoint: pipeline
   arguments:
     parameters:
@@ -1006,7 +1017,7 @@ spec:
 
     - name: health-check-task
       script:
-        image: python:3.9-slim
+        image: python:3.14-slim
         command: [python]
         source: |
           import random
@@ -1024,7 +1035,7 @@ spec:
 
     - name: send-alert
       container:
-        image: alpine:latest
+        image: alpine:3.23
         command: [sh, -c]
         args: ["echo 'ALERT: Application health check failed at $(date)'"]
 ```

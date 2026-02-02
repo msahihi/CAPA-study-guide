@@ -44,11 +44,12 @@ kind: Workflow
 metadata:
   generateName: container-basic-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -61,6 +62,14 @@ spec:
 
 Submit and observe:
 
+**Using kubectl:**
+```bash
+kubectl create -n argo -f container-basic.yaml
+kubectl get workflow -n argo -w  # Watch execution, Ctrl+C to stop
+kubectl logs -n argo <workflow-name> -c main
+```
+
+**Using Argo CLI:**
 ```bash
 argo submit -n argo container-basic.yaml --watch
 argo logs -n argo @latest
@@ -76,6 +85,7 @@ kind: Workflow
 metadata:
   generateName: container-env-
 spec:
+  serviceAccountName: argo
   entrypoint: env-demo
   arguments:
     parameters:
@@ -90,7 +100,7 @@ spec:
       - name: environment
       - name: app-version
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["env | grep -E '(APP_|ENV_|WORKFLOW_)' | sort"]
       env:
@@ -125,11 +135,12 @@ kind: Workflow
 metadata:
   generateName: container-resources-
 spec:
+  serviceAccountName: argo
   entrypoint: resource-demo
   templates:
   - name: resource-demo
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -168,6 +179,7 @@ kind: Workflow
 metadata:
   generateName: script-python-
 spec:
+  serviceAccountName: argo
   entrypoint: python-script
   arguments:
     parameters:
@@ -179,7 +191,7 @@ spec:
       parameters:
       - name: numbers
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -215,8 +227,23 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo script-python.yaml --watch
-argo logs -n argo @latest
+kubectl create -n argo -f script-python.yaml
+
+# Check status
+kubectl get workflow -n argo -w
+
+# View logs
+kubectl logs -n argo <workflow-name> -c main
+```
+
+Expected output:
+```
+Numbers: [10, 20, 30, 40, 50]
+Sum: 150
+Average: 30.00
+Median: 30
+
+Results saved to /tmp/results.json
 ```
 
 ### 2.2 Bash Script Template
@@ -229,6 +256,7 @@ kind: Workflow
 metadata:
   generateName: script-bash-
 spec:
+  serviceAccountName: argo
   entrypoint: bash-script
   arguments:
     parameters:
@@ -243,7 +271,7 @@ spec:
       - name: filename
       - name: content
     script:
-      image: bash:5.1
+      image: bash:5.2
       command: [bash]
       source: |
         #!/bin/bash
@@ -270,7 +298,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo script-bash.yaml --watch
+kubectl create -n argo -f script-bash.yaml
+kubectl get workflow -n argo -w
 ```
 
 ### 2.3 Script with Output Parameter
@@ -283,6 +312,7 @@ kind: Workflow
 metadata:
   generateName: script-output-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -298,7 +328,7 @@ spec:
 
   - name: generate-value
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import random
@@ -317,7 +347,7 @@ spec:
       parameters:
       - name: value
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Received value: {{inputs.parameters.value}}'"]
 ```
@@ -325,7 +355,8 @@ spec:
 Submit and observe the parameter passing:
 
 ```bash
-argo submit -n argo script-output.yaml --watch
+kubectl create -n argo -f script-output.yaml
+kubectl get workflow -n argo -w
 argo logs -n argo @latest
 ```
 
@@ -343,6 +374,7 @@ kind: Workflow
 metadata:
   generateName: steps-sequential-
 spec:
+  serviceAccountName: argo
   entrypoint: sequential-workflow
   templates:
   - name: sequential-workflow
@@ -384,7 +416,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -396,7 +428,8 @@ spec:
 Submit and watch the sequential execution:
 
 ```bash
-argo submit -n argo steps-sequential.yaml --watch
+kubectl create -n argo -f steps-sequential.yaml
+kubectl get workflow -n argo -w
 ```
 
 Notice how each step waits for the previous to complete.
@@ -411,6 +444,7 @@ kind: Workflow
 metadata:
   generateName: steps-dataflow-
 spec:
+  serviceAccountName: argo
   entrypoint: dataflow-pipeline
   templates:
   - name: dataflow-pipeline
@@ -437,7 +471,7 @@ spec:
 
   - name: generate-data
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -457,7 +491,7 @@ spec:
       parameters:
       - name: input-data
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -480,7 +514,7 @@ spec:
       parameters:
       - name: processed-data
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -493,7 +527,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo steps-dataflow.yaml --watch
+kubectl create -n argo -f steps-dataflow.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 4: Parallel Steps (6 minutes)
@@ -510,6 +545,7 @@ kind: Workflow
 metadata:
   generateName: steps-parallel-
 spec:
+  serviceAccountName: argo
   entrypoint: parallel-workflow
   templates:
   - name: parallel-workflow
@@ -563,7 +599,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
 
@@ -573,7 +609,7 @@ spec:
       - name: task-id
       - name: duration
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -585,7 +621,8 @@ spec:
 Submit and observe parallel execution:
 
 ```bash
-argo submit -n argo steps-parallel.yaml --watch
+kubectl create -n argo -f steps-parallel.yaml
+kubectl get workflow -n argo -w
 ```
 
 Notice how tasks A, B, and C run simultaneously.
@@ -600,6 +637,7 @@ kind: Workflow
 metadata:
   generateName: steps-mixed-
 spec:
+  serviceAccountName: argo
   entrypoint: mixed-workflow
   templates:
   - name: mixed-workflow
@@ -662,7 +700,7 @@ spec:
       parameters:
       - name: stage
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo '[{{inputs.parameters.stage}}] Started at $(date)'"]
 
@@ -671,7 +709,7 @@ spec:
       parameters:
       - name: component
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -684,7 +722,7 @@ spec:
       parameters:
       - name: test-type
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -696,7 +734,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo steps-mixed.yaml --watch
+kubectl create -n argo -f steps-mixed.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 5: Loops and Conditionals (5 minutes)
@@ -711,6 +750,7 @@ kind: Workflow
 metadata:
   generateName: steps-loop-
 spec:
+  serviceAccountName: argo
   entrypoint: loop-workflow
   templates:
   - name: loop-workflow
@@ -732,7 +772,7 @@ spec:
       parameters:
       - name: item
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -746,7 +786,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo steps-loop.yaml --watch
+kubectl create -n argo -f steps-loop.yaml
+kubectl get workflow -n argo -w
 ```
 
 ### 5.2 Conditional Execution
@@ -759,6 +800,7 @@ kind: Workflow
 metadata:
   generateName: steps-conditional-
 spec:
+  serviceAccountName: argo
   entrypoint: conditional-workflow
   arguments:
     parameters:
@@ -809,7 +851,7 @@ spec:
       parameters:
       - name: message
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [echo]
       args: ["{{inputs.parameters.message}}"]
 ```
@@ -831,6 +873,10 @@ argo submit -n argo steps-conditional.yaml \
 
 Resource templates manage Kubernetes resources as part of workflows.
 
+**Note**: This step requires additional RBAC permissions. The `argo` service account needs permission to create and delete ConfigMaps. If you encounter permission errors, you can either:
+1. Skip this step (it's optional for learning core concepts)
+2. Add the required RBAC permissions (see troubleshooting below)
+
 ### 6.1 Create ConfigMap Resource
 
 Create `resource-configmap.yaml`:
@@ -841,6 +887,7 @@ kind: Workflow
 metadata:
   generateName: resource-configmap-
 spec:
+  serviceAccountName: argo
   entrypoint: manage-configmap
   templates:
   - name: manage-configmap
@@ -873,7 +920,7 @@ spec:
 
   - name: use-configmap
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'ConfigMap created successfully'"]
 
@@ -891,7 +938,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo resource-configmap.yaml --watch
+kubectl create -n argo -f resource-configmap.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Practice Exercises
@@ -913,6 +961,7 @@ kind: Workflow
 metadata:
   generateName: multi-language-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -926,7 +975,7 @@ spec:
 
   - name: python-factorial
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import math
@@ -935,7 +984,7 @@ spec:
 
   - name: bash-sysinfo
     script:
-      image: bash:5.1
+      image: bash:5.2
       command: [bash]
       source: |
         echo "System Information:"
@@ -945,7 +994,7 @@ spec:
 
   - name: node-uuid
     script:
-      image: node:18-slim
+      image: node:24-slim
       command: [node]
       source: |
         const crypto = require('crypto');
@@ -973,6 +1022,7 @@ kind: Workflow
 metadata:
   generateName: cicd-pipeline-
 spec:
+  serviceAccountName: argo
   entrypoint: cicd
   templates:
   - name: cicd
@@ -1013,13 +1063,13 @@ spec:
       parameters:
       - name: stage
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo '[{{inputs.parameters.stage}}] Running...'; sleep 2"]
 
   - name: test-stage
     script:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh]
       source: |
         echo "Running integration tests..."
@@ -1051,6 +1101,7 @@ kind: Workflow
 metadata:
   generateName: data-pipeline-
 spec:
+  serviceAccountName: argo
   entrypoint: pipeline
   templates:
   - name: pipeline
@@ -1074,7 +1125,7 @@ spec:
 
   - name: generate-numbers
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -1094,7 +1145,7 @@ spec:
       parameters:
       - name: numbers
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -1119,7 +1170,7 @@ spec:
       parameters:
       - name: stats
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -1140,9 +1191,28 @@ spec:
 
 ```bash
 # List all workflows created in this lab
-argo list -n argo
+kubectl get workflow -n argo
 
 # Check logs for a specific workflow
+kubectl logs -n argo <workflow-name> -c main
+
+# Get workflow details
+kubectl get workflow -n argo <workflow-name> -o yaml
+
+# View workflow status
+kubectl describe workflow -n argo <workflow-name>
+
+# Clean up
+kubectl delete workflow -n argo --all
+```
+
+Using Argo CLI (alternative):
+
+```bash
+# List workflows
+argo list -n argo
+
+# Check logs
 argo logs -n argo <workflow-name>
 
 # Get workflow details
@@ -1190,6 +1260,51 @@ steps:
   - name: task2
     template: task
 ```
+
+### Issue: Resource Template Permission Errors
+
+**Symptom**: Resource template workflows fail with "forbidden" or "cannot create resource" errors
+
+**Error Example**:
+```
+configmaps is forbidden: User "system:serviceaccount:argo:argo"
+cannot create resource "configmaps"
+```
+
+**Cause**: The `argo` service account lacks RBAC permissions for the resources being managed.
+
+**Solution**: Add required permissions to the argo service account:
+
+```bash
+# Create Role with ConfigMap permissions
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-resource-permissions
+  namespace: argo
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-resource-binding
+  namespace: argo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-resource-permissions
+subjects:
+- kind: ServiceAccount
+  name: argo
+  namespace: argo
+EOF
+```
+
+After applying these permissions, resubmit the resource template workflow.
 
 ## Key Takeaways
 
