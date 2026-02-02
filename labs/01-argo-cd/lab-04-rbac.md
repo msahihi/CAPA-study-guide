@@ -80,7 +80,7 @@ Projects in Argo CD control:
 argocd proj create dev-team \
   --description "Development team project" \
   --dest https://kubernetes.default.svc,dev-* \
-  --src https://github.com/argoproj/*
+  --src https://github.com/**
 
 # View the created project
 argocd proj get dev-team
@@ -118,7 +118,7 @@ argocd proj get dev-team
 argocd proj create prod-team \
   --description "Production team project - restricted" \
   --dest https://kubernetes.default.svc,prod-* \
-  --src  https://github.com/argoproj/*
+  --src  https://github.com/**
 
 # Add specific allowed resources for production
 argocd proj allow-cluster-resource prod-team apps Deployment
