@@ -4,6 +4,8 @@
 
 **Difficulty**: Advanced
 
+**Argo Events Version**: v1.9+ (tested with v1.9.10)
+
 ## Learning Objectives
 
 By the end of this lab, you will be able to:
@@ -260,6 +262,9 @@ metadata:
   name: github-build-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: github-push
       eventSourceName: github-eventsource
@@ -463,6 +468,9 @@ metadata:
   name: dev-deploy-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: github-push
       eventSourceName: github-eventsource
@@ -538,6 +546,9 @@ metadata:
   name: prod-deploy-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     # Dependency 1: GitHub push to main
     - name: github-main-push
@@ -780,6 +791,9 @@ metadata:
   name: pr-check-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: pr-opened
       eventSourceName: github-eventsource

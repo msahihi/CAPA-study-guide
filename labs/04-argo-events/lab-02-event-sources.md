@@ -4,6 +4,8 @@
 
 **Difficulty**: Intermediate
 
+**Argo Events Version**: v1.9+ (tested with v1.9.10)
+
 ## Learning Objectives
 
 By the end of this lab, you will be able to:
@@ -83,6 +85,9 @@ metadata:
   name: calendar-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: calendar-dep
       eventSourceName: calendar-eventsource
@@ -187,6 +192,9 @@ metadata:
   name: calendar-filtered-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: frequent-event
       eventSourceName: calendar-multi
@@ -294,6 +302,9 @@ metadata:
   name: resource-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: pod-created
       eventSourceName: resource-eventsource
@@ -407,6 +418,9 @@ metadata:
   name: deployment-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: deployment-update
       eventSourceName: deployment-watcher
@@ -541,6 +555,9 @@ metadata:
   name: filtered-webhook-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: prod-event
       eventSourceName: webhook-multi
@@ -763,6 +780,9 @@ metadata:
   name: or-dependency-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: webhook-prod
       eventSourceName: webhook-multi
@@ -817,6 +837,9 @@ metadata:
   name: transformation-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: webhook-dep
       eventSourceName: webhook-multi

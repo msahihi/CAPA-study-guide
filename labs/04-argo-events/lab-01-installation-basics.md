@@ -4,6 +4,8 @@
 
 **Difficulty**: Beginner
 
+**Argo Events Version**: v1.9+ (tested with v1.9.10)
+
 ## Learning Objectives
 
 By the end of this lab, you will be able to:
@@ -39,22 +41,26 @@ External System → Webhook EventSource → Event Bus (NATS) → Sensor → Argo
 # Create namespace for Argo Events
 kubectl create namespace argo-events
 
-# Install Argo Events
+# Install Argo Events core components
 kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
+
+# Install validating webhook (optional but recommended)
+kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install-validating-webhook.yaml
 
 # Verify installation
 kubectl get pods -n argo-events
 ```
 
+**Note**: The validating webhook is optional but recommended for production environments. It validates EventSource and Sensor configurations before they are applied to the cluster.
+
 **Expected Output:**
 
 ```
-NAME                                 READY   STATUS    RESTARTS   AGE
-controller-manager-xxxxxxxxxx-xxxxx  1/1     Running   0          30s
-eventbus-controller-xxxxxxxxx-xxxxx  1/1     Running   0          30s
-eventsource-controller-xxxxxx-xxxxx  1/1     Running   0          30s
-sensor-controller-xxxxxxxxxxx-xxxxx  1/1     Running   0          30s
+NAME                                  READY   STATUS    RESTARTS   AGE
+controller-manager-xxxxxxxxxx-xxxxx   1/1     Running   0          30s
 ```
+
+**Note**: Modern Argo Events (v1.9+) consolidates all controllers into a single `controller-manager` pod. Earlier versions had separate pods for eventbus-controller, eventsource-controller, and sensor-controller.
 
 ### Verify CRDs Installation
 
@@ -70,14 +76,19 @@ kubectl get crd eventbus.argoproj.io
 
 **Understanding the Components:**
 
-- **controller-manager**: Manages overall Argo Events lifecycle
-- **eventbus-controller**: Manages event bus instances
-- **eventsource-controller**: Manages EventSource resources
-- **sensor-controller**: Manages Sensor resources
+- **controller-manager**: Manages all Argo Events resources including EventBus, EventSource, and Sensor resources
 
 ## Step 2: Set Up Event Bus
 
-The Event Bus is the messaging layer that connects EventSources to Sensors. It's based on NATS JetStream.
+The Event Bus is the messaging layer that connects EventSources to Sensors. It acts as the transport layer, enabling a publish-subscribe pattern where EventSources publish events and Sensors subscribe to them.
+
+**Available EventBus implementations:**
+
+- **NATS** (Deprecated - legacy option)
+- **JetStream** (Recommended - modern NATS streaming)
+- **Kafka** (For distributed streaming platforms)
+
+This lab uses the **native** EventBus, which is JetStream-based and recommended for most use cases.
 
 ### Create Default Event Bus
 
@@ -115,9 +126,17 @@ kubectl describe eventbus default -n argo-events
 **Expected Output:**
 
 ```
-NAME      TYPE   VERSION   STATUS
-default   nats             Running
+NAME      AGE
+default   10s
 ```
+
+The EventBus status can be checked with:
+
+```bash
+kubectl get eventbus default -n argo-events -o jsonpath='{.status.conditions[?(@.type=="Deployed")].status}{"\n"}'
+```
+
+Expected: `True`
 
 ### Wait for Event Bus to be Ready
 
@@ -128,14 +147,15 @@ kubectl wait --for=condition=Ready pod -l app.kubernetes.io/component=eventbus -
 
 **Key Concepts:**
 
-- **Event Bus**: Acts as the message broker between EventSources and Sensors
-- **NATS**: Lightweight, high-performance messaging system
-- **JetStream**: NATS persistence layer for reliable event delivery
-- **Replicas**: Multiple replicas provide high availability
+- **Event Bus**: Acts as the transport layer between EventSources and Sensors
+- **Native EventBus**: Uses JetStream (modern NATS streaming) for reliable event delivery
+- **Publish-Subscribe Pattern**: EventSources publish events, Sensors subscribe to them
+- **Replicas**: 3 replicas is the minimum for NATS clustering and high availability
+- **Authentication**: Token-based auth secures communication between components
 
 ## Step 3: Create Your First Webhook EventSource
 
-EventSources capture events from external systems. Let's create a simple webhook EventSource.
+EventSources capture events from external systems. A webhook EventSource exposes an HTTP server that allows external entities to trigger workloads via HTTP requests. Argo Events supports 20+ EventSource types including webhooks, calendars, Kafka, cloud providers (AWS, GCP, Azure), and more.
 
 ### Create Webhook EventSource
 
@@ -193,9 +213,85 @@ WEBHOOK_PORT_FORWARD_PID=$!
 - **endpoint**: HTTP path for the webhook
 - **method**: HTTP method (POST, GET, etc.)
 
-## Step 4: Create a Basic Sensor
+## Step 4: Set Up RBAC for Sensors
 
-Sensors listen for events and trigger actions. Let's create a Sensor that triggers an Argo Workflow.
+Before creating sensors that trigger workflows, we need to configure proper permissions.
+
+### Create Service Account and RBAC
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operate-workflow-sa
+  namespace: argo-events
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operate-workflow-role
+  namespace: argo-events
+rules:
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflows
+      - workflowtemplates
+      - cronworkflows
+      - clusterworkflowtemplates
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operate-workflow-rolebinding
+  namespace: argo-events
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operate-workflow-role
+subjects:
+  - kind: ServiceAccount
+    name: operate-workflow-sa
+    namespace: argo-events
+EOF
+```
+
+### Verify RBAC Configuration
+
+```bash
+# Check service account
+kubectl get serviceaccount operate-workflow-sa -n argo-events
+
+# Check role and rolebinding
+kubectl get role operate-workflow-role -n argo-events
+kubectl get rolebinding operate-workflow-rolebinding -n argo-events
+```
+
+### Copy Artifact Repository Credentials
+
+If you completed the Argo Workflows labs, copy the MinIO credentials:
+
+```bash
+# Copy minio-credentials secret from argo namespace
+kubectl get secret minio-credentials -n argo -o yaml | \
+  sed 's/namespace: argo/namespace: argo-events/' | \
+  kubectl apply -f -
+```
+
+**Note**: If you don't have MinIO set up, workflows will still run but won't be able to store artifacts.
+
+## Step 5: Create a Basic Sensor
+
+Sensors define a set of event dependencies (inputs) and triggers (outputs). They function as event dependency managers, listening to the EventBus and executing triggers when event conditions are met. Argo Events supports multiple trigger types including Argo Workflows, Kubernetes objects, HTTP requests, AWS Lambda, Kafka messages, and more.
 
 ### Create Sensor with Workflow Trigger
 
@@ -207,6 +303,10 @@ metadata:
   name: webhook-sensor
   namespace: argo-events
 spec:
+  # Use service account with workflow permissions
+  template:
+    serviceAccountName: operate-workflow-sa
+
   # Define event dependencies
   dependencies:
     - name: test-dep
@@ -227,21 +327,25 @@ spec:
                 generateName: webhook-workflow-
                 namespace: argo-events
               spec:
-                entrypoint: whalesay
+                entrypoint: print-message
                 arguments:
                   parameters:
                     - name: message
                       # Extract message from webhook payload
                       value: "hello from webhook"
                 templates:
-                  - name: whalesay
+                  - name: print-message
                     inputs:
                       parameters:
                         - name: message
                     container:
-                      image: docker/whalesay:latest
-                      command: [cowsay]
-                      args: ["{{inputs.parameters.message}}"]
+                      image: alpine:latest
+                      command: [sh, -c]
+                      args:
+                        - |
+                          echo "========================================="
+                          echo "Message: {{inputs.parameters.message}}"
+                          echo "========================================="
 EOF
 ```
 
@@ -263,13 +367,15 @@ kubectl logs -n argo-events -l sensor-name=webhook-sensor
 
 **Understanding Sensor Configuration:**
 
-- **dependencies**: Events the sensor waits for
-- **eventSourceName**: References the EventSource
+- **template.serviceAccountName**: Service account for executing triggers (required for creating Kubernetes resources)
+- **dependencies**: Event dependencies the sensor monitors (inputs)
+- **eventSourceName**: References the EventSource to listen to
 - **eventName**: Specific event within the EventSource
-- **triggers**: Actions to perform when event is received
+- **triggers**: Actions to execute when dependencies are satisfied (outputs)
 - **k8s.operation**: Kubernetes operation (create, update, patch, delete)
+- **trigger types**: Supports Argo Workflows, K8s objects, HTTP, Lambda, Kafka, Slack, and more
 
-## Step 5: Test the Event Flow
+## Step 6: Test the Event Flow
 
 Now let's trigger the webhook and watch the complete event flow.
 
@@ -279,11 +385,10 @@ Now let's trigger the webhook and watch the complete event flow.
 # Send a POST request to the webhook endpoint
 curl -X POST \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hello from my first webhook!"}' \
+  -d '{"message": "Hello from my first webhook"}' \
   http://localhost:12000/example
 
-# Check response (should be 200 OK)
-echo "Response code: $?"
+# Expected response: success
 ```
 
 ### Monitor Workflow Creation
@@ -325,7 +430,7 @@ argo list -n argo-events
 argo get $WORKFLOW_NAME -n argo-events
 ```
 
-## Step 6: Understanding Event Data Flow
+## Step 7: Understanding Event Data Flow
 
 Let's trace the complete event flow to understand how data moves through the system.
 
@@ -365,7 +470,7 @@ curl -X POST \
   http://localhost:12000/example
 ```
 
-## Step 7: Enhanced Sensor with Parameterization
+## Step 8: Enhanced Sensor with Parameterization
 
 Let's create a more advanced sensor that extracts data from the webhook payload.
 
@@ -379,6 +484,9 @@ metadata:
   name: webhook-sensor-enhanced
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: webhook-dep
       eventSourceName: webhook-eventsource
@@ -457,7 +565,7 @@ kubectl logs -n argo-events $WORKFLOW_NAME
 - **default function**: Provide default values for missing fields
 - **Template expressions**: Use Go template syntax for data extraction
 
-## Step 8: Cleanup and Verification
+## Step 9: Cleanup and Verification
 
 ### Stop Port Forwarding
 
@@ -570,32 +678,40 @@ kubectl port-forward -n argo-events svc/webhook-eventsource-eventsource-svc 1200
 
 ### Event Bus Architecture
 
-- Central message broker using NATS
-- Decouples EventSources from Sensors
-- Provides reliable event delivery
-- Supports multiple event streams
+- Acts as the transport layer for Argo Events
+- Implements publish-subscribe pattern
+- Native EventBus uses JetStream (modern NATS streaming)
+- Decouples EventSources (publishers) from Sensors (subscribers)
+- Provides reliable event delivery with persistence
+- Minimum 3 replicas for NATS clustering and high availability
 
 ### EventSource Types
 
+Argo Events supports 20+ EventSource types:
+
 - **Webhook**: HTTP endpoints for external systems
-- **Calendar**: Time-based events (covered in next lab)
-- **Resource**: Kubernetes resource changes (covered in next lab)
-- **Message Queues**: Kafka, NATS, etc. (advanced topic)
+- **Calendar**: Time-based events (cron schedules, intervals)
+- **Resource**: Kubernetes resource changes
+- **Cloud Providers**: AWS (SNS, SQS, S3), GCP (Pub/Sub), Azure (Event Hubs)
+- **Message Queues**: Kafka, NATS, MQTT, Redis, RabbitMQ, AMQP
+- **Git**: GitHub, GitLab, Bitbucket webhooks
+- **Storage**: S3, GCS, Minio
 
 ### Sensor Components
 
-- **Dependencies**: Define which events to wait for
-- **Triggers**: Define actions to take
-- **Filters**: Control which events to process (next lab)
-- **Parameterization**: Extract and pass event data
+- **Dependencies**: Event dependencies to monitor (inputs) - defines which events to wait for
+- **Triggers**: Actions to execute when conditions are met (outputs)
+- **Filters**: Control which events to process based on conditions
+- **Parameterization**: Extract and pass event data using Go templates
+- **ServiceAccount**: Required for creating Kubernetes resources
 
 ### Event Flow
 
 1. External system sends event to EventSource
-2. EventSource publishes to Event Bus
-3. Sensor receives event from Event Bus
+2. EventSource publishes event to Event Bus
+3. Sensor subscribes to and receives event from Event Bus
 4. Sensor evaluates dependencies and filters
-5. Sensor executes triggers (creates resources)
+5. Sensor executes configured triggers (creates workflows, K8s objects, HTTP calls, etc.)
 
 ## Additional Exercises
 
