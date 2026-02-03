@@ -250,6 +250,7 @@ argo submit -n argo hello-world.yaml --watch
 The `--watch` flag streams the workflow progress to your terminal.
 
 **Troubleshooting**: If you encounter a "could not find a token" error with the Argo CLI, ensure:
+
 1. You've set the `ARGO_TOKEN` environment variable (see Step 3.2)
 2. Port-forwarding to argo-server is active
 3. Alternatively, use `kubectl create` which doesn't require these configurations
@@ -720,6 +721,7 @@ kubectl delete workflow -n argo --all
 **Solution**:
 
 1. Generate and set the authentication token:
+
 ```bash
 export ARGO_TOKEN=$(kubectl create token argo -n argo --duration=24h)
 export ARGO_SERVER='localhost:2746'
@@ -727,11 +729,13 @@ export ARGO_INSECURE_SKIP_VERIFY=true
 ```
 
 2. Ensure port-forwarding is active:
+
 ```bash
 kubectl -n argo port-forward deployment/argo-server 2746:2746
 ```
 
 3. If issues persist, use `kubectl create` instead:
+
 ```bash
 kubectl create -n argo -f your-workflow.yaml
 ```

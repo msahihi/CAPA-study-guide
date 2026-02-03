@@ -63,6 +63,7 @@ spec:
 Submit and observe:
 
 **Using kubectl:**
+
 ```bash
 kubectl create -n argo -f container-basic.yaml
 kubectl get workflow -n argo -w  # Watch execution, Ctrl+C to stop
@@ -70,6 +71,7 @@ kubectl logs -n argo <workflow-name> -c main
 ```
 
 **Using Argo CLI:**
+
 ```bash
 argo submit -n argo container-basic.yaml --watch
 argo logs -n argo @latest
@@ -237,6 +239,7 @@ kubectl logs -n argo <workflow-name> -c main
 ```
 
 Expected output:
+
 ```
 Numbers: [10, 20, 30, 40, 50]
 Sum: 150
@@ -874,6 +877,7 @@ argo submit -n argo steps-conditional.yaml \
 Resource templates manage Kubernetes resources as part of workflows.
 
 **Note**: This step requires additional RBAC permissions. The `argo` service account needs permission to create and delete ConfigMaps. If you encounter permission errors, you can either:
+
 1. Skip this step (it's optional for learning core concepts)
 2. Add the required RBAC permissions (see troubleshooting below)
 
@@ -1266,6 +1270,7 @@ steps:
 **Symptom**: Resource template workflows fail with "forbidden" or "cannot create resource" errors
 
 **Error Example**:
+
 ```
 configmaps is forbidden: User "system:serviceaccount:argo:argo"
 cannot create resource "configmaps"
