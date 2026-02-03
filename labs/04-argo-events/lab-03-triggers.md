@@ -4,6 +4,8 @@
 
 **Difficulty**: Intermediate
 
+**Argo Events Version**: v1.9+ (tested with v1.9.10)
+
 ## Learning Objectives
 
 By the end of this lab, you will be able to:
@@ -71,6 +73,9 @@ metadata:
   name: workflow-param-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: workflow-event
       eventSourceName: workflow-trigger-source
@@ -170,6 +175,9 @@ metadata:
   name: dag-workflow-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: build-event
       eventSourceName: workflow-trigger-source
@@ -633,6 +641,9 @@ metadata:
   name: conditional-trigger-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: webhook-event
       eventSourceName: workflow-trigger-source
@@ -765,6 +776,9 @@ metadata:
   name: retry-policy-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: webhook-event
       eventSourceName: workflow-trigger-source
@@ -851,6 +865,9 @@ metadata:
   name: multi-trigger-sensor
   namespace: argo-events
 spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+
   dependencies:
     - name: webhook-event
       eventSourceName: workflow-trigger-source
