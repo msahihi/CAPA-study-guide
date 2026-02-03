@@ -87,7 +87,7 @@ spec:
     spec:
       containers:
       - name: minio
-        image: minio/minio:latest
+        image: minio/minio:RELEASE.2024-01-13T07-53-03Z
         args:
         - server
         - /data
@@ -169,7 +169,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: minio-mc
-        image: minio/mc:latest
+        image: minio/mc:RELEASE.2024-01-13T08-44-48Z
         command:
         - /bin/sh
         - -c
@@ -195,7 +195,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: minio-mc
-        image: minio/mc:latest
+        image: minio/mc:RELEASE.2024-01-13T08-44-48Z
         command:
         - /bin/sh
         - -c
@@ -222,11 +222,12 @@ kind: Workflow
 metadata:
   generateName: artifact-output-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -258,6 +259,7 @@ kind: Workflow
 metadata:
   generateName: artifact-passing-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -284,7 +286,7 @@ spec:
 
   - name: create-artifact
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -304,7 +306,7 @@ spec:
       - name: input-file
         path: /tmp/input.txt
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -325,7 +327,7 @@ spec:
       - name: processed-file
         path: /tmp/final.txt
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -350,6 +352,7 @@ kind: Workflow
 metadata:
   generateName: artifact-multiple-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -370,7 +373,7 @@ spec:
 
   - name: generate-files
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -396,7 +399,7 @@ spec:
       - name: file3
         path: /tmp/input/c.txt
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -413,7 +416,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo artifact-multiple.yaml --watch
+kubectl create -n argo -f artifact-multiple.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 3: Artifact Sources (8 minutes)
@@ -428,6 +432,7 @@ kind: Workflow
 metadata:
   generateName: artifact-git-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -437,10 +442,10 @@ spec:
         path: /src
         git:
           repo: https://github.com/argoproj/argo-workflows.git
-          revision: "master"
+          revision: "main"
           depth: 1
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -468,6 +473,7 @@ kind: Workflow
 metadata:
   generateName: artifact-http-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -478,7 +484,7 @@ spec:
         http:
           url: https://jsonplaceholder.typicode.com/posts/1
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -496,7 +502,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo artifact-http.yaml --watch
+kubectl create -n argo -f artifact-http.yaml
+kubectl get workflow -n argo -w
 ```
 
 ### 3.3 Raw Artifact (Inline Content)
@@ -509,6 +516,7 @@ kind: Workflow
 metadata:
   generateName: artifact-raw-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -526,7 +534,7 @@ spec:
               key1: value1
               key2: value2
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -537,7 +545,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo artifact-raw.yaml --watch
+kubectl create -n argo -f artifact-raw.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 4: Artifact Processing Workflows (7 minutes)
@@ -552,6 +561,7 @@ kind: Workflow
 metadata:
   generateName: artifact-data-pipeline-
 spec:
+  serviceAccountName: argo
   entrypoint: data-pipeline
   templates:
   - name: data-pipeline
@@ -587,7 +597,7 @@ spec:
 
   - name: generate-csv
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import csv
@@ -611,7 +621,7 @@ spec:
       - name: input-csv
         path: /tmp/input.csv
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import csv
@@ -644,7 +654,7 @@ spec:
       - name: input-csv
         path: /tmp/input.csv
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import csv
@@ -676,7 +686,7 @@ spec:
       - name: transformed
         path: /tmp/transformed.csv
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -718,6 +728,7 @@ kind: Workflow
 metadata:
   generateName: artifact-build-test-
 spec:
+  serviceAccountName: argo
   entrypoint: build-test
   templates:
   - name: build-test
@@ -744,7 +755,7 @@ spec:
 
   - name: create-python-code
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         code = '''
@@ -771,7 +782,7 @@ if __name__ == "__main__":
       - name: source
         path: /tmp/src/calculator.py
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import os
@@ -801,7 +812,7 @@ if __name__ == "__main__":
       - name: package
         path: /tmp/package
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import sys
@@ -823,7 +834,8 @@ if __name__ == "__main__":
 Submit:
 
 ```bash
-argo submit -n argo artifact-build-test.yaml --watch
+kubectl create -n argo -f artifact-build-test.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Step 5: Artifact Archiving and Compression (5 minutes)
@@ -838,6 +850,7 @@ kind: Workflow
 metadata:
   generateName: artifact-archive-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -867,7 +880,7 @@ spec:
 
   - name: create-compressed
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -883,7 +896,7 @@ spec:
 
   - name: create-uncompressed
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -904,7 +917,7 @@ spec:
       - name: data
         path: /tmp/input
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -917,7 +930,8 @@ spec:
 Submit:
 
 ```bash
-argo submit -n argo artifact-archive.yaml --watch
+kubectl create -n argo -f artifact-archive.yaml
+kubectl get workflow -n argo -w
 ```
 
 ## Practice Exercises
@@ -940,6 +954,7 @@ kind: Workflow
 metadata:
   generateName: log-aggregation-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -986,7 +1001,7 @@ spec:
       parameters:
       - name: service
     script:
-      image: bash:5.1
+      image: bash:5.2
       command: [bash]
       source: |
         SERVICE="{{inputs.parameters.service}}"
@@ -1012,7 +1027,7 @@ spec:
       - name: log3
         path: /tmp/logs/database.log
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args:
         - |
@@ -1029,7 +1044,7 @@ spec:
       - name: logs
         path: /tmp/logs.txt
     script:
-      image: bash:5.1
+      image: bash:5.2
       command: [bash]
       source: |
         echo "=== LOG ANALYSIS REPORT ==="
@@ -1061,6 +1076,7 @@ kind: Workflow
 metadata:
   generateName: image-pipeline-
 spec:
+  serviceAccountName: argo
   entrypoint: main
   templates:
   - name: main
@@ -1109,7 +1125,7 @@ spec:
 
   - name: create-metadata
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -1135,7 +1151,7 @@ spec:
       - name: image
         path: /tmp/input.json
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json
@@ -1170,7 +1186,7 @@ spec:
       - name: thumb
         path: /tmp/thumbnail.json
     script:
-      image: python:3.9-slim
+      image: python:3.14-slim
       command: [python]
       source: |
         import json

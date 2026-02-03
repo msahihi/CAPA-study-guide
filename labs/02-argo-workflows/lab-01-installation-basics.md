@@ -149,19 +149,23 @@ kubectl -n argo port-forward deployment/argo-server 2746:2746
 
 Keep this terminal open. The UI will be accessible at `https://localhost:2746`
 
-### 3.2 Configure Argo Server Access
+### 3.2 Configure Argo CLI Authentication
 
-In a new terminal, configure the Argo CLI to use the local server:
+The Argo CLI requires authentication to communicate with the Argo Server. Set up authentication:
 
 ```bash
+# Generate a token from the argo service account
+export ARGO_TOKEN=$(kubectl create token argo -n argo --duration=24h)
+
+# Configure Argo CLI to use the local server
 export ARGO_SERVER='localhost:2746'
-export ARGO_HTTP1=true
-export ARGO_SECURE=true
 export ARGO_INSECURE_SKIP_VERIFY=true
 export ARGO_NAMESPACE=argo
 ```
 
-Add these to your `~/.bashrc` or `~/.zshrc` for persistence.
+**Note**: The token expires after 24 hours. Regenerate it when needed.
+
+Add these to your `~/.bashrc` or `~/.zshrc` for persistence (excluding the token generation, which should be run manually).
 
 ### 3.3 Access the UI
 
@@ -193,6 +197,8 @@ Wait for the pod to restart:
 
 ```bash
 kubectl wait --for=condition=ready pod -l app=argo-server -n argo --timeout=60s
+
+kubectl -n argo port-forward deployment/argo-server 2746:2746
 ```
 
 ## Step 4: Create Your First Workflow (7 minutes)
@@ -207,31 +213,35 @@ kind: Workflow
 metadata:
   generateName: hello-world-
 spec:
+  serviceAccountName: argo
   entrypoint: whalesay
   templates:
   - name: whalesay
     container:
-      image: docker/whalesay:latest
-      command: [cowsay]
-      args: ["Hello Argo Workflows!"]
+      image: alpine:3.23
+      command: [sh, -c]
+      args: ["echo 'Hello Argo Workflows!'"]
 ```
 
 **Explanation:**
 
 - `generateName`: Creates unique workflow names with this prefix
+- `serviceAccountName`: Service account to use for workflow execution (provides necessary RBAC permissions)
 - `entrypoint`: The template to start execution
 - `templates`: Defines the work to be done
 - `container`: Runs a container with specified image and command
 
+**Note**: We use `alpine:3.18` instead of `docker/whalesay:latest` because the whalesay image uses an outdated Docker manifest format that may not be supported by newer container runtimes.
+
 ### 4.2 Submit the Workflow
 
-Using kubectl:
+**Using kubectl (recommended for local development):**
 
 ```bash
 kubectl create -n argo -f hello-world.yaml
 ```
 
-Or using Argo CLI (preferred):
+**Using Argo CLI:**
 
 ```bash
 argo submit -n argo hello-world.yaml --watch
@@ -239,44 +249,67 @@ argo submit -n argo hello-world.yaml --watch
 
 The `--watch` flag streams the workflow progress to your terminal.
 
-### 4.3 Observe Output
+**Troubleshooting**: If you encounter a "could not find a token" error with the Argo CLI, ensure:
 
-You should see output similar to:
+1. You've set the `ARGO_TOKEN` environment variable (see Step 3.2)
+2. Port-forwarding to argo-server is active
+3. Alternatively, use `kubectl create` which doesn't require these configurations
+
+### 4.3 Monitor Workflow Status
+
+Watch the workflow execution:
+
+```bash
+kubectl get workflow -n argo -w
+```
+
+Output:
+
+```
+NAME                STATUS    AGE   MESSAGE
+hello-world-xxxxx   Pending   1s
+hello-world-xxxxx   Running   5s
+hello-world-xxxxx   Succeeded 10s
+```
+
+Press `Ctrl+C` to stop watching.
+
+### 4.4 Get Detailed Workflow Information
+
+Using Argo CLI (if configured):
+
+```bash
+argo get -n argo hello-world-xxxxx
+```
+
+Output shows complete workflow details:
 
 ```
 Name:                hello-world-xxxxx
 Namespace:           argo
-ServiceAccount:      unset
-Status:              Pending
-Created:             Mon Jan 26 10:00:00 -0700 (now)
-
-STEP                  TEMPLATE  PODNAME               DURATION  MESSAGE
- ● hello-world-xxxxx  whalesay  hello-world-xxxxx
-
-Name:                hello-world-xxxxx
-Namespace:           argo
-ServiceAccount:      unset
-Status:              Running
-Created:             Mon Jan 26 10:00:00 -0700 (5 seconds ago)
-Started:             Mon Jan 26 10:00:05 -0700 (now)
-
-STEP                  TEMPLATE  PODNAME               DURATION  MESSAGE
- ● hello-world-xxxxx  whalesay  hello-world-xxxxx     5s
-
-Name:                hello-world-xxxxx
-Namespace:           argo
-ServiceAccount:      unset
+ServiceAccount:      argo
 Status:              Succeeded
-Created:             Mon Jan 26 10:00:00 -0700 (10 seconds ago)
-Started:             Mon Jan 26 10:00:05 -0700 (5 seconds ago)
-Finished:            Mon Jan 26 10:00:10 -0700 (now)
-Duration:            5 seconds
+Conditions:
+ PodRunning          False
+ Completed           True
+Created:             Mon Feb 02 21:49:51 +0100 (10 seconds ago)
+Started:             Mon Feb 02 21:49:51 +0100 (10 seconds ago)
+Finished:            Mon Feb 02 21:50:01 +0100 (now)
+Duration:            10 seconds
+Progress:            1/1
+ResourcesDuration:   3s*(1 cpu),3s*(100Mi memory)
 
-STEP                  TEMPLATE  PODNAME               DURATION  MESSAGE
- ✔ hello-world-xxxxx  whalesay  hello-world-xxxxx-1   5s
+STEP                  TEMPLATE  PODNAME            DURATION  MESSAGE
+ ✔ hello-world-xxxxx  whalesay  hello-world-xxxxx  3s
 ```
 
-### 4.4 Create a Parameterized Workflow
+Using kubectl:
+
+```bash
+kubectl get workflow -n argo hello-world-xxxxx -o yaml
+```
+
+### 4.5 Create a Parameterized Workflow
 
 Create `hello-param.yaml`:
 
@@ -286,6 +319,7 @@ kind: Workflow
 metadata:
   generateName: hello-param-
 spec:
+  serviceAccountName: argo
   entrypoint: whalesay
   arguments:
     parameters:
@@ -297,12 +331,18 @@ spec:
       parameters:
       - name: message
     container:
-      image: docker/whalesay:latest
-      command: [cowsay]
-      args: ["{{inputs.parameters.message}}"]
+      image: alpine:3.23
+      command: [sh, -c]
+      args: ["echo '{{inputs.parameters.message}}'"]
 ```
 
-Submit with custom parameter:
+Submit with custom parameter using kubectl:
+
+```bash
+kubectl create -n argo -f hello-param.yaml
+```
+
+Or using Argo CLI:
 
 ```bash
 argo submit -n argo hello-param.yaml \
@@ -328,13 +368,22 @@ hello-world-xxxxx   Succeeded   2m    5s         0
 
 ### 5.2 Get Workflow Details
 
+Using Argo CLI:
+
 ```bash
 argo get -n argo hello-world-xxxxx
+```
+
+Using kubectl:
+
+```bash
+kubectl get workflow -n argo hello-world-xxxxx -o wide
 ```
 
 This shows complete workflow information including:
 
 - Metadata (name, namespace, creation time)
+- ServiceAccount used (should show `argo`)
 - Status and phase
 - Parameters used
 - Step details and timing
@@ -342,22 +391,22 @@ This shows complete workflow information including:
 
 ### 5.3 View Workflow Logs
 
+Using Argo CLI:
+
 ```bash
 argo logs -n argo hello-world-xxxxx
 ```
 
-You should see the whalesay output:
+Using kubectl:
+
+```bash
+kubectl logs -n argo hello-world-xxxxx -c main
+```
+
+You should see the output:
 
 ```
-hello-world-xxxxx:  _________________________
-hello-world-xxxxx: < Hello Argo Workflows! >
-hello-world-xxxxx:  -------------------------
-hello-world-xxxxx:     \
-hello-world-xxxxx:      \
-hello-world-xxxxx:       \
-hello-world-xxxxx:                     ##        .
-hello-world-xxxxx:               ## ## ##       ==
-...
+Hello Argo Workflows!
 ```
 
 ### 5.4 Monitor in the UI
@@ -399,11 +448,12 @@ kind: Workflow
 metadata:
   generateName: sleep-
 spec:
+  serviceAccountName: argo
   entrypoint: sleep
   templates:
   - name: sleep
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Sleeping for 60 seconds'; sleep 60; echo 'Done!'"]
 ```
@@ -411,47 +461,93 @@ spec:
 Submit it:
 
 ```bash
+kubectl create -n argo -f sleep-workflow.yaml
+```
+
+Or with Argo CLI:
+
+```bash
 argo submit -n argo sleep-workflow.yaml
 ```
 
 ### 6.2 Watch Workflow Progress
 
+Using Argo CLI:
+
 ```bash
 argo watch -n argo sleep-xxxxx
 ```
 
-This shows real-time updates as the workflow progresses.
+Using kubectl:
+
+```bash
+kubectl get workflow -n argo sleep-xxxxx -w
+```
+
+This shows real-time updates as the workflow progresses through its lifecycle: Pending → Running → Succeeded/Failed.
 
 ### 6.3 Stop a Running Workflow
 
-In a new terminal, stop the workflow:
+In a new terminal, stop the workflow.
+
+Using Argo CLI:
 
 ```bash
 argo stop -n argo sleep-xxxxx
+```
+
+Using kubectl:
+
+```bash
+kubectl patch workflow -n argo sleep-xxxxx --type merge -p '{"spec":{"shutdown":"Stop"}}'
 ```
 
 The workflow status will change to `Failed` with message "stopped with strategy 'Terminate'".
 
 ### 6.4 Delete Workflows
 
-Delete a specific workflow:
+Delete a specific workflow.
+
+Using Argo CLI:
 
 ```bash
 argo delete -n argo hello-world-xxxxx
 ```
 
+Using kubectl:
+
+```bash
+kubectl delete workflow -n argo hello-world-xxxxx
+```
+
 Delete all workflows:
+
+Using Argo CLI:
 
 ```bash
 argo delete -n argo --all
 ```
 
+Using kubectl:
+
+```bash
+kubectl delete workflow -n argo --all
+```
+
 ### 6.5 Resubmit a Workflow
 
-You can resubmit a completed workflow:
+You can resubmit a completed workflow.
+
+Using Argo CLI:
 
 ```bash
 argo resubmit -n argo hello-world-xxxxx
+```
+
+Using kubectl (retrieve the workflow spec and resubmit):
+
+```bash
+kubectl get workflow -n argo hello-world-xxxxx -o yaml | kubectl create -f -
 ```
 
 This creates a new workflow instance with the same configuration.
@@ -475,6 +571,7 @@ kind: Workflow
 metadata:
   generateName: custom-greeting-
 spec:
+  serviceAccountName: argo
   entrypoint: greet
   arguments:
     parameters:
@@ -489,12 +586,18 @@ spec:
       - name: greeting
       - name: name
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo '{{inputs.parameters.greeting}}, {{inputs.parameters.name}}! Welcome to Argo Workflows.'"]
 ```
 
 Submit:
+
+```bash
+kubectl create -n argo -f custom-greeting.yaml
+```
+
+Or with Argo CLI and parameters:
 
 ```bash
 argo submit -n argo custom-greeting.yaml \
@@ -522,11 +625,12 @@ kind: Workflow
 metadata:
   generateName: resource-limits-
 spec:
+  serviceAccountName: argo
   entrypoint: limited-task
   templates:
   - name: limited-task
     container:
-      image: alpine:latest
+      image: alpine:3.23
       command: [sh, -c]
       args: ["echo 'Running with resource limits'; sleep 10; echo 'Complete'"]
       resources:
@@ -541,7 +645,11 @@ spec:
 Submit and verify:
 
 ```bash
+kubectl create -n argo -f resource-limits.yaml
+# Or with Argo CLI
 argo submit -n argo resource-limits.yaml --watch
+
+# Verify resource limits
 kubectl get pod -n argo -l workflows.argoproj.io/workflow -o jsonpath='{.items[0].spec.containers[0].resources}'
 ```
 
@@ -578,22 +686,67 @@ Verify your lab completion:
 ```bash
 # Check Argo installation
 kubectl get pods -n argo
-argo version
+
+# Expected output: argo-server and workflow-controller running
+# NAME                                   READY   STATUS    RESTARTS   AGE
+# argo-server-xxxxxxxxxx-xxxxx           1/1     Running   0          15m
+# workflow-controller-xxxxxxxxxx-xxxxx   1/1     Running   0          15m
 
 # Verify you can submit workflows
-argo submit -n argo hello-world.yaml --watch
+kubectl create -n argo -f hello-world.yaml
 
 # Verify you can view workflows
-argo list -n argo
+kubectl get workflow -n argo
+
+# Expected output:
+# NAME                STATUS      AGE
+# hello-world-xxxxx   Succeeded   1m
 
 # Verify you can access logs
-argo logs -n argo @latest
+kubectl logs -n argo hello-world-xxxxx -c main
+
+# Expected output:
+# Hello Argo Workflows!
 
 # Clean up test workflows
-argo delete -n argo --all
+kubectl delete workflow -n argo --all
 ```
 
 ## Troubleshooting
+
+### Issue: Argo CLI Authentication Error
+
+**Symptom**: `argo submit` fails with "could not find a token" or gRPC/ALPN errors
+
+**Solution**:
+
+1. Generate and set the authentication token:
+
+```bash
+export ARGO_TOKEN=$(kubectl create token argo -n argo --duration=24h)
+export ARGO_SERVER='localhost:2746'
+export ARGO_INSECURE_SKIP_VERIFY=true
+```
+
+2. Ensure port-forwarding is active:
+
+```bash
+kubectl -n argo port-forward deployment/argo-server 2746:2746
+```
+
+3. If issues persist, use `kubectl create` instead:
+
+```bash
+kubectl create -n argo -f your-workflow.yaml
+```
+
+### Issue: Image Pull Errors
+
+**Symptom**: Workflow fails with "unsupported manifest media type" or "ErrImagePull"
+
+**Cause**: Using outdated container images with old Docker manifest formats (like `docker/whalesay:latest`)
+
+**Solution**: Use modern container images like `alpine:3.18`, `busybox:latest`, or other actively maintained images.
 
 ### Issue: Pods Stuck in Pending
 
@@ -627,19 +780,19 @@ kubectl -n argo port-forward deployment/argo-server 2746:2746
 
 ### Issue: Permission Denied Errors
 
-**Symptom**: Workflow fails with RBAC errors
+**Symptom**: Workflow fails with RBAC errors like "cannot patch resource pods" or "cannot create resource workflowtaskresults"
 
-**Solution**:
+**Cause**: The workflow is using the `default` service account which lacks necessary permissions.
 
-```bash
-# Create a service account with proper permissions
-kubectl create serviceaccount workflow-executor -n argo
-kubectl create rolebinding workflow-executor --clusterrole=argo-workflow --serviceaccount=argo:workflow-executor -n argo
+**Solution**: Always specify `serviceAccountName: argo` in your workflow spec:
 
-# Use it in workflows
+```yaml
 spec:
-  serviceAccountName: workflow-executor
+  serviceAccountName: argo
+  # ... rest of workflow spec
 ```
+
+The `argo` service account is created automatically during Argo Workflows installation and has the necessary permissions.
 
 ### Issue: Argo CLI Not Found
 
