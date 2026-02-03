@@ -232,7 +232,7 @@ spec:
     spec:
       containers:
       - name: analysis-demo
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -437,7 +437,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -539,7 +539,7 @@ Update the rollout to trigger analysis:
 ```bash
 # Update to yellow version
 kubectl argo rollouts set image rollout-with-analysis \
-  app=argoproj/rollouts-demo:yellow \
+  app=msahihi/rollouts-demo:yellow \
   -n analysis-demo
 
 # Watch rollout with analysis
@@ -638,7 +638,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -703,7 +703,7 @@ kubectl argo rollouts get rollout rollout-inline-analysis --watch -n analysis-de
 
 # Update image
 kubectl argo rollouts set image rollout-inline-analysis \
-  app=argoproj/rollouts-demo:yellow \
+  app=msahihi/rollouts-demo:yellow \
   -n analysis-demo
 
 # Watch rollout - it will pause at each analysis step
@@ -780,7 +780,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -812,7 +812,7 @@ kubectl argo rollouts get rollout rollout-fail-analysis --watch -n analysis-demo
 
 # Update image to trigger rollout
 kubectl argo rollouts set image rollout-fail-analysis \
-  app=argoproj/rollouts-demo:red \
+  app=msahihi/rollouts-demo:red \
   -n analysis-demo
 
 # Watch rollout - it will fail and rollback automatically
@@ -893,7 +893,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
