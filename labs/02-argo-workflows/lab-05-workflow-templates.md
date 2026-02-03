@@ -107,7 +107,7 @@ spec:
 Apply and watch:
 
 ```bash
-kubectl apply -f - <<EOF
+kubectl create -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -553,6 +553,7 @@ spec:
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   workflowSpec:
+    serviceAccountName: argo
     entrypoint: main
     templates:
     - name: main
@@ -603,6 +604,7 @@ spec:
   successfulJobsHistoryLimit: 7  # Keep last 7 days
   failedJobsHistoryLimit: 3
   workflowSpec:
+    serviceAccountName: argo
     entrypoint: backup-pipeline
     arguments:
       parameters:
@@ -1004,6 +1006,7 @@ spec:
   successfulJobsHistoryLimit: 10
   failedJobsHistoryLimit: 10
   workflowSpec:
+    serviceAccountName: argo
     entrypoint: health-check
     templates:
     - name: health-check

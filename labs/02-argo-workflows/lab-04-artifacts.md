@@ -442,7 +442,7 @@ spec:
         path: /src
         git:
           repo: https://github.com/argoproj/argo-workflows.git
-          revision: "master"
+          revision: "main"
           depth: 1
     container:
       image: alpine:3.23
