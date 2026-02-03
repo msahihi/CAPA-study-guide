@@ -136,7 +136,7 @@ spec:
     spec:
       containers:
       - name: bluegreen-demo
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -158,18 +158,6 @@ spec:
       autoPromotionEnabled: false
       # Time to wait before scaling down the old ReplicaSet after promotion
       scaleDownDelaySeconds: 30
-      # Anti-affinity configuration to prevent blue and green from running on same node
-      antiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-          weight: 1
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values:
-                - bluegreen-demo
-            topologyKey: kubernetes.io/hostname
 EOF
 ```
 
@@ -193,7 +181,7 @@ Name:            bluegreen-demo
 Namespace:       bluegreen-demo
 Status:          ✔ Healthy
 Strategy:        BlueGreen
-Images:          argoproj/rollouts-demo:blue (stable, active)
+Images:          msahihi/rollouts-demo:blue (stable, active)
 Replicas:
   Desired:       3
   Current:       3
@@ -301,7 +289,7 @@ Deploy a new version to create the green environment:
 ```bash
 # Update to yellow version (representing new version)
 kubectl argo rollouts set image bluegreen-demo \
-  bluegreen-demo=argoproj/rollouts-demo:yellow \
+  bluegreen-demo=msahihi/rollouts-demo:yellow \
   -n bluegreen-demo
 
 # Watch the rollout progress
@@ -323,14 +311,14 @@ Namespace:       bluegreen-demo
 Status:          ॥ Paused
 Message:         BlueGreenPause
 Strategy:        BlueGreen
-Images:          argoproj/rollouts-demo:blue (stable, active)
-                 argoproj/rollouts-demo:yellow (preview)
+Images:          msahihi/rollouts-demo:blue (stable, active)
+                 msahihi/rollouts-demo:yellow (preview)
 Replicas:
   Desired:       3
   Current:       6
   Updated:       3
-  Ready:         6
-  Available:     6
+  Ready:         3
+  Available:     3
 
 NAME                                       KIND        STATUS     AGE    INFO
 ⟳ bluegreen-demo                           Rollout     ॥ Paused   2m30s
@@ -463,13 +451,13 @@ Name:            bluegreen-demo
 Namespace:       bluegreen-demo
 Status:          ✔ Healthy
 Strategy:        BlueGreen
-Images:          argoproj/rollouts-demo:yellow (stable, active)
+Images:          msahihi/rollouts-demo:yellow (stable, active)
 Replicas:
   Desired:       3
   Current:       6
   Updated:       3
-  Ready:         6
-  Available:     6
+  Ready:         3
+  Available:     3
 
 NAME                                       KIND        STATUS         AGE    INFO
 ⟳ bluegreen-demo                           Rollout     ✔ Healthy      5m
@@ -530,7 +518,7 @@ Deploy a new version to practice rollback:
 ```bash
 # Deploy red version
 kubectl argo rollouts set image bluegreen-demo \
-  bluegreen-demo=argoproj/rollouts-demo:red \
+  bluegreen-demo=msahihi/rollouts-demo:red \
   -n bluegreen-demo
 
 # Wait for preview to be ready
@@ -583,7 +571,7 @@ Name:            bluegreen-demo
 Namespace:       bluegreen-demo
 Status:          ✔ Healthy
 Strategy:        BlueGreen
-Images:          argoproj/rollouts-demo:yellow (stable, active)
+Images:          msahihi/rollouts-demo:yellow (stable, active)
 Replicas:
   Desired:       3
   Current:       3
@@ -646,7 +634,7 @@ Deploy a new version to test auto-promotion:
 ```bash
 # Deploy green version
 kubectl argo rollouts set image bluegreen-demo \
-  bluegreen-demo=argoproj/rollouts-demo:green \
+  bluegreen-demo=msahihi/rollouts-demo:green \
   -n bluegreen-demo
 
 # Watch for automatic promotion after 30 seconds
@@ -700,7 +688,7 @@ kubectl patch rollout bluegreen-demo -n bluegreen-demo --type merge -p '
 
 # Deploy new version to test
 kubectl argo rollouts set image bluegreen-demo \
-  bluegreen-demo=argoproj/rollouts-demo:orange \
+  bluegreen-demo=msahihi/rollouts-demo:orange \
   -n bluegreen-demo
 
 # Wait and check replica counts
@@ -732,11 +720,11 @@ kubectl patch rollout bluegreen-demo -n bluegreen-demo --type merge -p '
 Check rollout revision history:
 
 ```bash
-# View history
-kubectl argo rollouts history rollout bluegreen-demo -n bluegreen-demo
+# View rollout status showing revisions
+kubectl argo rollouts get rollout bluegreen-demo -n bluegreen-demo
 
-# Get detailed history
-kubectl rollout history rollout bluegreen-demo -n bluegreen-demo
+# Use kubectl for deployment history
+kubectl rollout history deployment -n bluegreen-demo
 ```
 
 ### 10.2 Check Rollout Events

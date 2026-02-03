@@ -36,7 +36,7 @@ kubectl auth can-i create namespaces
 # Should return "yes"
 
 # Check Kubernetes version (1.19+ recommended)
-kubectl version --short
+kubectl version
 ```
 
 ## Step 1: Install Argo Rollouts Controller
@@ -193,10 +193,13 @@ kubectl argo rollouts list rollouts --help
 **Expected Output:**
 
 ```
-kubectl-argo-rollouts: v1.6.0+abc1234
-  BuildDate: 2024-01-15T10:30:00Z
-  GitCommit: abc1234567890abcdef1234567890abcdef12345
-  Platform: linux/amd64
+kubectl-argo-rollouts: v1.8.3+49fa151
+  BuildDate: 2025-06-04T22:19:21Z
+  GitCommit: 49fa1516cf71672b69e265267da4e1d16e1fe114
+  GitTreeState: clean
+  GoVersion: go1.23.9
+  Compiler: gc
+  Platform: darwin/amd64
 ```
 
 ## Step 3: Create Your First Rollout
@@ -248,7 +251,7 @@ spec:
     spec:
       containers:
       - name: rollouts-demo
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -284,7 +287,7 @@ Strategy:        Canary
   Step:          8/8
   SetWeight:     100
   ActualWeight:  100
-Images:          argoproj/rollouts-demo:blue (stable)
+Images:          msahihi/rollouts-demo:blue (stable)
 Replicas:
   Desired:       5
   Current:       5
@@ -380,7 +383,7 @@ spec:
     spec:
       containers:
       - name: deployment-demo
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -421,7 +424,7 @@ Perform updates to see the difference in behavior:
 ```bash
 # Update Rollout image
 kubectl argo rollouts set image rollout-demo \
-  rollouts-demo=argoproj/rollouts-demo:yellow \
+  rollouts-demo=msahihi/rollouts-demo:yellow \
   -n rollouts-demo
 
 # Watch Rollout update (in a new terminal or background)
@@ -429,7 +432,7 @@ kubectl argo rollouts get rollout rollout-demo --watch -n rollouts-demo &
 
 # Wait a moment, then update Deployment image
 kubectl set image deployment/deployment-demo \
-  deployment-demo=argoproj/rollouts-demo:yellow \
+  deployment-demo=msahihi/rollouts-demo:yellow \
   -n rollouts-demo
 
 # Watch Deployment update
@@ -486,12 +489,9 @@ kubectl argo rollouts get rollout rollout-demo -n rollouts-demo
 
 # Watch rollout status continuously
 kubectl argo rollouts get rollout rollout-demo --watch -n rollouts-demo
-
-# Get rollout history
-kubectl argo rollouts history rollout rollout-demo -n rollouts-demo
 ```
 
-### 5.3 Pause and Resume
+### 5.3 Pause and Promote
 
 Control rollout progression:
 
@@ -502,10 +502,10 @@ kubectl argo rollouts pause rollout-demo -n rollouts-demo
 # Verify paused status
 kubectl argo rollouts get rollout rollout-demo -n rollouts-demo
 
-# Resume rollout
-kubectl argo rollouts resume rollout-demo -n rollouts-demo
+# Promote rollout to continue to next step
+kubectl argo rollouts promote rollout-demo -n rollouts-demo
 
-# Verify resumed status
+# Verify rollout continues
 kubectl argo rollouts get rollout rollout-demo -n rollouts-demo
 ```
 
@@ -516,7 +516,7 @@ Abort an in-progress rollout:
 ```bash
 # Start a new rollout
 kubectl argo rollouts set image rollout-demo \
-  rollouts-demo=argoproj/rollouts-demo:red \
+  rollouts-demo=msahihi/rollouts-demo:red \
   -n rollouts-demo
 
 # Wait for it to pause
@@ -525,11 +525,53 @@ sleep 5
 # Abort the rollout
 kubectl argo rollouts abort rollout-demo -n rollouts-demo
 
-# Check status - should revert to stable version
+# Check status - should show Degraded status with stable version running
 kubectl argo rollouts get rollout rollout-demo -n rollouts-demo
 ```
 
-### 5.5 Restart Rollout
+**Expected Behavior After Abort:**
+
+The `abort` command performs an **automatic rollback** to the stable version. The rollout status will show as "Degraded" but all pods remain healthy and running:
+
+- ✅ **Automatic Rollback**: Canary/new version pods (red) are immediately scaled down to 0 and terminated
+- ✅ **Stable Version Running**: The previous stable version (blue/yellow) continues running at full scale (5/5 replicas)
+- ✅ **No Downtime**: All traffic continues to be served by the stable version with zero downtime
+- ⚠️ **Degraded Status**: Status shows "Degraded" because the rollout spec still references the new version (red), but the running pods are the old version
+- ✅ **You don't need to do anything else** - the rollback is already complete!
+
+**What Does "Degraded" Mean?**
+
+"Degraded" doesn't mean your app is broken - it means:
+
+- The rollout attempt **failed/was aborted**
+- The desired state (new image in spec) ≠ actual state (old image running)
+- Your application is **fully functional** on the previous version
+
+**Options After Abort:**
+
+1. **Leave it as-is**: Your app works fine on the stable version. The "Degraded" status is just informational.
+2. **Deploy a different version**: Update to a new image and let it complete successfully
+3. **Retry the aborted rollout**: Use `kubectl argo rollouts retry` to try deploying the same version again
+
+### 5.5 Retry Aborted Rollout
+
+Retry a previously aborted rollout:
+
+```bash
+# Retry the aborted rollout
+kubectl argo rollouts retry rollout rollout-demo -n rollouts-demo
+
+# Watch the retry progress
+kubectl argo rollouts get rollout rollout-demo --watch -n rollouts-demo
+
+# The rollout will restart from the beginning with the same image
+# Promote when it pauses
+kubectl argo rollouts promote rollout-demo -n rollouts-demo
+```
+
+**Note:** The `retry` command will attempt to deploy the same version that was previously aborted. The rollout status will change from "Degraded" to "Progressing" and go through all the canary steps again.
+
+### 5.6 Restart Rollout
 
 Restart all pods in a rollout:
 
@@ -550,15 +592,9 @@ View and understand rollout status fields:
 ```bash
 # Get full rollout status
 kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status}' | jq
-
-# Check specific status fields
-echo "Phase: $(kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.phase}')"
-echo "Current Step: $(kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.currentStepIndex}')"
-echo "Replicas: $(kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.replicas}')"
-echo "Ready Replicas: $(kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.readyReplicas}')"
 ```
 
-### 6.2 Understand ReplicaSets
+### 6.2 Understand ReplicaSets and Template vs Stable
 
 Examine how rollouts manage ReplicaSets:
 
@@ -572,15 +608,46 @@ kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.stableRS
 # Get current ReplicaSet hash
 kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.currentPodHash}'
 
-# Describe ReplicaSet to see ownership
-kubectl describe replicaset -n rollouts-demo -l app=rollout-demo
+# Check the image in the Rollout spec (desired state)
+kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# Check the image in the stable ReplicaSet (actual running state)
+STABLE_RS=$(kubectl get rollout rollout-demo -n rollouts-demo -o jsonpath='{.status.stableRS}')
+kubectl get replicaset rollout-demo-$STABLE_RS -n rollouts-demo -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
+
+**Understanding Spec vs Stable After Abort:**
+
+After aborting a rollout, you'll notice an important distinction:
+
+- **Rollout Spec Template** (`.spec.template`): Contains the **new/aborted image** (e.g., red)
+  - This is the desired state you tried to deploy
+  - This is what shows in `kubectl get rollout -o yaml`
+
+- **Stable ReplicaSet** (`.status.stableRS`): Contains the **previous/working image** (e.g., blue)
+  - This is what's actually running in production
+  - This is what serves all your traffic
+
+**Why This Matters:**
+
+This mismatch is why the rollout shows "Degraded" status:
+
+- Desired state (spec) ≠ Actual state (stable RS)
+- The spec still references the failed/aborted version
+- But the stable RS runs the safe, proven previous version
+
+**This is intentional** because:
+
+1. It preserves your rollback - the stable RS is protected
+2. It lets you see what you tried to deploy (spec) vs what's running (stable RS)
+3. You can retry the same version later with `kubectl argo rollouts retry`
 
 **Key Points:**
 
 - Rollouts maintain multiple ReplicaSets (stable and canary/preview)
-- The stable ReplicaSet runs the proven version
+- The stable ReplicaSet runs the proven version (protected from abort)
 - The canary/preview ReplicaSet runs the new version during rollout
+- After abort: spec template ≠ stable ReplicaSet (this is normal!)
 - Rollouts control the replica count in each ReplicaSet based on strategy
 
 ## Step 7: Clean Up Resources
@@ -641,7 +708,7 @@ kubectl argo rollouts list rollouts --all-namespaces
 - [ ] Created first Rollout resource successfully
 - [ ] Compared Rollout with standard Deployment
 - [ ] Performed rollout update with canary strategy
-- [ ] Used basic management commands (promote, pause, resume, abort)
+- [ ] Used basic management commands (promote, pause, abort)
 - [ ] Understood rollout status fields and phases
 - [ ] Examined ReplicaSet management by rollouts
 - [ ] Successfully cleaned up demo resources
@@ -652,7 +719,7 @@ kubectl argo rollouts list rollouts --all-namespaces
 
 2. **Rollout vs Deployment**: Rollouts provide advanced deployment strategies with fine-grained control over traffic and validation, while Deployments offer simple rolling updates
 
-3. **kubectl Plugin**: The Argo Rollouts plugin provides convenient commands for managing rollouts, including promote, pause, resume, abort, and real-time status viewing
+3. **kubectl Plugin**: The Argo Rollouts plugin provides convenient commands for managing rollouts, including promote, pause, abort, and real-time status viewing
 
 4. **Progressive Delivery**: Rollouts enable gradual rollout of changes with manual or automated promotion between steps
 

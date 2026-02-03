@@ -190,7 +190,7 @@ spec:
     spec:
       containers:
       - name: traffic-demo
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -319,7 +319,7 @@ Update the rollout to trigger canary with traffic splitting:
 ```bash
 # Update to yellow version
 kubectl argo rollouts set image traffic-demo \
-  traffic-demo=argoproj/rollouts-demo:yellow \
+  traffic-demo=msahihi/rollouts-demo:yellow \
   -n traffic-demo
 
 # Watch rollout progress
@@ -414,7 +414,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -522,7 +522,7 @@ kubectl argo rollouts get rollout traffic-header-demo --watch -n traffic-demo
 
 # Deploy new version
 kubectl argo rollouts set image traffic-header-demo \
-  app=argoproj/rollouts-demo:green \
+  app=msahihi/rollouts-demo:green \
   -n traffic-demo
 
 # Wait for rollout to pause
@@ -596,7 +596,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -725,7 +725,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080

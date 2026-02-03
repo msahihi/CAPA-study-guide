@@ -12,7 +12,7 @@ By the end of this lab, you will be able to:
 - Configure multi-step canary rollouts with weight-based traffic distribution
 - Use manual and automatic progression between canary steps
 - Implement pause durations for validation windows
-- Perform pause and resume operations on canary rollouts
+- Perform pause and promote operations on canary rollouts
 - Execute rollback and abort operations
 - Understand stable and canary ReplicaSet management
 
@@ -106,7 +106,7 @@ spec:
     spec:
       containers:
       - name: canary-demo
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -154,7 +154,7 @@ Strategy:        Canary
   Step:          5/5
   SetWeight:     100
   ActualWeight:  100
-Images:          argoproj/rollouts-demo:blue (stable)
+Images:          msahihi/rollouts-demo:blue (stable)
 Replicas:
   Desired:       10
   Current:       10
@@ -210,7 +210,7 @@ Update to a new version to trigger canary rollout:
 ```bash
 # Update to yellow version
 kubectl argo rollouts set image canary-demo \
-  canary-demo=argoproj/rollouts-demo:yellow \
+  canary-demo=msahihi/rollouts-demo:yellow \
   -n canary-demo
 
 # Immediately watch the rollout
@@ -235,8 +235,8 @@ Strategy:        Canary
   Step:          1/9
   SetWeight:     10
   ActualWeight:  10
-Images:          argoproj/rollouts-demo:blue (stable)
-                 argoproj/rollouts-demo:yellow (canary)
+Images:          msahihi/rollouts-demo:blue (stable)
+                 msahihi/rollouts-demo:yellow (canary)
 Replicas:
   Desired:       10
   Current:       10
@@ -312,7 +312,7 @@ done
 - At 80%: ~8 canary pods, ~2 stable pods
 - At 100%: All pods are canary, stable scaled to 0
 
-## Step 4: Manual Pause and Resume
+## Step 4: Manual Pause and Promote
 
 ### 4.1 Create Rollout with Manual Gates
 
@@ -338,7 +338,7 @@ spec:
     spec:
       containers:
       - name: canary-manual
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -376,7 +376,7 @@ Update the manual canary:
 ```bash
 # Update image
 kubectl argo rollouts set image canary-manual \
-  canary-manual=argoproj/rollouts-demo:yellow \
+  canary-manual=msahihi/rollouts-demo:yellow \
   -n canary-demo
 
 # Watch rollout - it will pause at 10% indefinitely
@@ -425,7 +425,7 @@ Skip remaining steps and fully promote:
 ```bash
 # Deploy another version
 kubectl argo rollouts set image canary-manual \
-  canary-manual=argoproj/rollouts-demo:green \
+  canary-manual=msahihi/rollouts-demo:green \
   -n canary-demo
 
 # Wait for first pause
@@ -438,7 +438,7 @@ kubectl argo rollouts promote canary-manual --full -n canary-demo
 kubectl argo rollouts get rollout canary-manual --watch -n canary-demo
 ```
 
-## Step 5: Pause and Resume Operations
+## Step 5: Pause and Promote Operations
 
 ### 5.1 Pause During Rollout
 
@@ -447,7 +447,7 @@ Pause a rollout in progress:
 ```bash
 # Start new rollout on original canary
 kubectl argo rollouts set image canary-demo \
-  canary-demo=argoproj/rollouts-demo:red \
+  canary-demo=msahihi/rollouts-demo:red \
   -n canary-demo
 
 # Wait a few seconds for it to start
@@ -467,13 +467,13 @@ Status:          ॥ Paused
 Message:         manually paused
 ```
 
-### 5.2 Resume Rollout
+### 5.2 Promote Rollout
 
-Resume the paused rollout:
+Promote the paused rollout to continue:
 
 ```bash
-# Resume rollout
-kubectl argo rollouts resume canary-demo -n canary-demo
+# Promote rollout to next step
+kubectl argo rollouts promote canary-demo -n canary-demo
 
 # Watch it continue progressing
 kubectl argo rollouts get rollout canary-demo --watch -n canary-demo
@@ -484,7 +484,7 @@ kubectl argo rollouts get rollout canary-demo --watch -n canary-demo
 ```bash
 # Deploy new version
 kubectl argo rollouts set image canary-demo \
-  canary-demo=argoproj/rollouts-demo:orange \
+  canary-demo=msahihi/rollouts-demo:orange \
   -n canary-demo
 
 # Wait for 40% step
@@ -496,8 +496,8 @@ kubectl argo rollouts pause canary-demo -n canary-demo
 # Check current step
 kubectl argo rollouts get rollout canary-demo -n canary-demo | grep "Step:"
 
-# Validate at this traffic level, then resume when ready
-kubectl argo rollouts resume canary-demo -n canary-demo
+# Validate at this traffic level, then promote when ready
+kubectl argo rollouts promote canary-demo -n canary-demo
 ```
 
 ## Step 6: Rollback and Abort
@@ -509,7 +509,7 @@ Abort a rollout to revert to stable version:
 ```bash
 # Deploy new version
 kubectl argo rollouts set image canary-demo \
-  canary-demo=argoproj/rollouts-demo:bad \
+  canary-demo=msahihi/rollouts-demo:bad \
   -n canary-demo
 
 # Wait for first step
@@ -548,15 +548,15 @@ done | sort | uniq -c
 Retry a failed/aborted rollout:
 
 ```bash
-# Check current revision
-kubectl argo rollouts history rollout canary-demo -n canary-demo
+# Check current rollout status and revisions
+kubectl argo rollouts get rollout canary-demo -n canary-demo
 
 # Retry the rollout to previous failed version (if you want to retry)
 kubectl argo rollouts retry rollout canary-demo -n canary-demo
 
 # Or deploy a new version
 kubectl argo rollouts set image canary-demo \
-  canary-demo=argoproj/rollouts-demo:purple \
+  canary-demo=msahihi/rollouts-demo:purple \
   -n canary-demo
 ```
 
@@ -585,7 +585,7 @@ spec:
     spec:
       containers:
       - name: canary-advanced
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -618,7 +618,7 @@ kubectl argo rollouts get rollout canary-advanced --watch -n canary-demo
 
 # Update image
 kubectl argo rollouts set image canary-advanced \
-  canary-advanced=argoproj/rollouts-demo:yellow \
+  canary-advanced=msahihi/rollouts-demo:yellow \
   -n canary-advanced
 
 # Watch pod counts during rollout
@@ -651,7 +651,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: argoproj/rollouts-demo:blue
+        image: msahihi/rollouts-demo:blue
         ports:
         - name: http
           containerPort: 8080
@@ -774,7 +774,7 @@ Test traffic during a rollout:
 ```bash
 # Deploy new version
 kubectl argo rollouts set image canary-demo \
-  canary-demo=argoproj/rollouts-demo:cyan \
+  canary-demo=msahihi/rollouts-demo:cyan \
   -n canary-demo
 
 # Test traffic at different stages
@@ -861,7 +861,7 @@ kubectl get namespace canary-demo
 - [ ] Deployed new version and observed automatic progression
 - [ ] Tested traffic distribution at different weight percentages
 - [ ] Implemented manual promotion gates with indefinite pauses
-- [ ] Performed pause and resume operations during rollout
+- [ ] Performed pause and promote operations during rollout
 - [ ] Executed rollback using abort command
 - [ ] Configured maxSurge and maxUnavailable settings
 - [ ] Monitored ReplicaSet scaling during canary
@@ -876,7 +876,7 @@ kubectl get namespace canary-demo
 
 3. **Manual vs Automatic**: Indefinite pauses (`pause: {}`) require manual promotion, while duration-based pauses (`pause: {duration: 30s}`) proceed automatically
 
-4. **Pause and Resume**: Ability to pause rollout at any time for investigation, then resume when ready, provides operational flexibility
+4. **Pause and Promote**: Ability to pause rollout at any time for investigation, then promote when ready, provides operational flexibility
 
 5. **Abort and Rollback**: Aborting canary immediately scales down new version and returns all traffic to stable version, enabling quick recovery
 
@@ -918,8 +918,8 @@ kubectl get rollout canary-demo -n canary-demo -o jsonpath='{.status.pauseCondit
 # Check if manually paused
 kubectl get rollout canary-demo -n canary-demo -o jsonpath='{.status.message}'
 
-# Resume if paused
-kubectl argo rollouts resume canary-demo -n canary-demo
+# Promote if paused
+kubectl argo rollouts promote canary-demo -n canary-demo
 
 # Promote if waiting at indefinite pause
 kubectl argo rollouts promote canary-demo -n canary-demo
