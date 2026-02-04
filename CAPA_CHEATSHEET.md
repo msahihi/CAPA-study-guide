@@ -2,6 +2,8 @@
 
 > Quick Reference for Certified Argo Project Associate
 
+**Version**: v1.0.0 | **Validated**: 2026-02-05 against Argo CD v3.3.0, Argo Workflows v3.7.9, Argo Rollouts v1.8.3, Argo Events v1.9.10
+
 ## Table of Contents
 
 1. [Argo CD - Continuous Delivery (35%)](#argo-cd)
@@ -2145,8 +2147,8 @@ EventSource (Resource) → Event Bus → Sensor → Notification
 
 ### Official Documentation
 
-- [Argo CD Documentation](https://argo-cd.readthedocs.io/)
-- [Argo Workflows Documentation](https://argoproj.github.io/argo-workflows/)
+- [Argo CD Documentation](https://argo-cd.readthedocs.io/en/release-3.3/)
+- [Argo Workflows Documentation](https://argo-workflows.readthedocs.io/en/release-3.7/)
 - [Argo Rollouts Documentation](https://argoproj.github.io/argo-rollouts/)
 - [Argo Events Documentation](https://argoproj.github.io/argo-events/)
 
@@ -2158,5 +2160,5 @@ EventSource (Resource) → Event Bus → Sensor → Notification
 ### Practice Resources
 
 - [Argo Examples Repository](https://github.com/argoproj/argocd-example-apps)
-- [Argo Workflows Examples](https://github.com/argoproj/argo-workflows/tree/master/examples)
+- [Argo Workflows Examples](https://github.com/argoproj/argo-workflows/tree/main/examples)
 - [Killercoda Argo Scenarios](https://killercoda.com/argoproj)
