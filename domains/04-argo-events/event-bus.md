@@ -520,7 +520,7 @@ spec:
 
 ## Study Resources
 
-- [EventBus Specification](https://argoproj.github.io/argo-events/eventbus/eventbus-introduction/) - Complete EventBus reference
+- [EventBus Specification](https://argoproj.github.io/argo-events/concepts/eventbus/) - Complete EventBus reference
 - [NATS Documentation](https://docs.nats.io/) - NATS messaging system
 - [JetStream Guide](https://docs.nats.io/nats-concepts/jetstream) - NATS JetStream persistence
 - [EventBus Examples](https://github.com/argoproj/argo-events/tree/master/examples/eventbus) - Official examples

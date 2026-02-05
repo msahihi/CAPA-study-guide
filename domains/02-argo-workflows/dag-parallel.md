@@ -711,7 +711,7 @@ spec:
 ## Study Resources
 
 - [DAG Workflows Documentation](https://argoproj.github.io/argo-workflows/walk-through/dag/) - Official DAG guide
-- [Parallelism Control](https://argoproj.github.io/argo-workflows/parallelism/) - Managing parallel execution
+- [Parallelism Control](https://argo-workflows.readthedocs.io/en/latest/workflow-controller-configmap/) - Managing parallel execution
 - [Workflow Dependencies](https://argoproj.github.io/argo-workflows/walk-through/dag/) - Task dependency patterns
 - [Dynamic Workflows](https://argoproj.github.io/argo-workflows/walk-through/loops/) - Dynamic task generation
 

@@ -611,8 +611,8 @@ spec:
 
 - [Analysis Overview](https://argoproj.github.io/argo-rollouts/features/analysis/) - Official documentation
 - [AnalysisTemplate Specification](https://argoproj.github.io/argo-rollouts/features/analysis/#analysistemplate) - Complete spec reference
-- [Metric Providers](https://argoproj.github.io/argo-rollouts/analysis/providers/) - All supported providers
-- [Expression Syntax](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md) - Condition expression language
+- [Metric Providers](https://argoproj.github.io/argo-rollouts/analysis/prometheus/) - All supported providers
+- [Expression Syntax](https://expr-lang.org/docs/language-definition) - Condition expression language
 
 ## Key Points to Remember
 

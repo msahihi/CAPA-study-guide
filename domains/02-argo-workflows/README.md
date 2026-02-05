@@ -39,7 +39,7 @@ Practice these hands-on labs to reinforce your understanding:
 - [Argo Workflows Official Documentation](https://argoproj.github.io/argo-workflows/) - Complete reference guide
 - [Argo Workflows Getting Started](https://argoproj.github.io/argo-workflows/quick-start/) - Quick start guide
 - [Workflow Examples](https://github.com/argoproj/argo-workflows/tree/master/examples) - Official example workflows
-- [Argo Workflows Best Practices](https://argoproj.github.io/argo-workflows/best-practices/) - Production deployment guidance
+- [Argo Workflows Best Practices](https://argo-workflows.readthedocs.io/en/latest/running-at-massive-scale/) - Production deployment guidance
 
 ## Key Exam Topics
 

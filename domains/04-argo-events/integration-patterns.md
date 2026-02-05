@@ -934,10 +934,10 @@ spec:
 
 ## Study Resources
 
-- [Integration Patterns Guide](https://argoproj.github.io/argo-events/tutorials/) - Official tutorials
-- [EventSource Gallery](https://argoproj.github.io/argo-events/eventsources/setup/) - All event source types
+- [Integration Patterns Guide](https://argoproj.github.io/argo-events/tutorials/01-introduction/) - Official tutorials
+- [EventSource Gallery](https://argoproj.github.io/argo-events/concepts/event_source/) - All event source types
 - [Real-World Examples](https://github.com/argoproj/argo-events/tree/master/examples) - Production patterns
-- [Best Practices](https://argoproj.github.io/argo-events/best-practices/) - Integration best practices
+- [Argo Events Documentation](https://argoproj.github.io/argo-events/) - Integration guidance
 
 ## Key Points to Remember
 

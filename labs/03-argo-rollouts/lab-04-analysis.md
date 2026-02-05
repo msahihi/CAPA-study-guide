@@ -1279,6 +1279,6 @@ Continue to the next lab:
 
 - [Analysis Documentation](https://argoproj.github.io/argo-rollouts/features/analysis/)
 - [AnalysisTemplate Specification](https://argoproj.github.io/argo-rollouts/features/analysis/#analysistemplate)
-- [Metric Providers](https://argoproj.github.io/argo-rollouts/features/analysis/prometheus/)
+- [Metric Providers](https://argoproj.github.io/argo-rollouts/analysis/prometheus/)
 - [Background Analysis](https://argoproj.github.io/argo-rollouts/features/analysis/#background-analysis)
 - [Analysis Arguments](https://argoproj.github.io/argo-rollouts/features/analysis/#analysis-template-arguments)

@@ -508,11 +508,11 @@ spec:
 
 ## Study Resources
 
-- [EventSource Specification](https://argoproj.github.io/argo-events/eventsources/setup/) - Complete EventSource reference
-- [Sensor Specification](https://argoproj.github.io/argo-events/sensors/sensor-introduction/) - Complete Sensor reference
+- [EventSource Specification](https://argoproj.github.io/argo-events/concepts/event_source/) - Complete EventSource reference
+- [Sensor Specification](https://argoproj.github.io/argo-events/concepts/sensor/) - Complete Sensor reference
 - [Event Source Examples](https://github.com/argoproj/argo-events/tree/master/examples/event-sources) - Official examples
 - [Sensor Examples](https://github.com/argoproj/argo-events/tree/master/examples/sensors) - Official sensor examples
-- [Filters and Data Extraction](https://argoproj.github.io/argo-events/sensors/filters/) - Event filtering guide
+- [Filters and Data Extraction](https://argoproj.github.io/argo-events/sensors/trigger-conditions/) - Event filtering guide
 
 ## Key Points to Remember
 

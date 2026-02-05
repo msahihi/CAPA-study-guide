@@ -460,7 +460,7 @@ spec:
 - [Argo Workflows Core Concepts](https://argoproj.github.io/argo-workflows/workflow-concepts/) - Official documentation
 - [Workflow Specification](https://argoproj.github.io/argo-workflows/fields/) - Complete field reference
 - [Workflow Examples Repository](https://github.com/argoproj/argo-workflows/tree/master/examples) - Official examples
-- [Understanding Workflow Phases](https://argoproj.github.io/argo-workflows/workflow-phases/) - Phase lifecycle guide
+- [Understanding Workflow Phases](https://argo-workflows.readthedocs.io/en/latest/variables/) - Phase lifecycle guide
 
 ## Key Points to Remember
 

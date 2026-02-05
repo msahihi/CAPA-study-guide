@@ -762,9 +762,9 @@ spec:
 
 ## Study Resources
 
-- [Trigger Specification](https://argoproj.github.io/argo-events/sensors/triggers/) - Complete trigger reference
+- [Trigger Specification](https://argoproj.github.io/argo-events/concepts/trigger/) - Complete trigger reference
 - [Trigger Examples](https://github.com/argoproj/argo-events/tree/master/examples/sensors) - Official examples
-- [Parameterization Guide](https://argoproj.github.io/argo-events/sensors/parameterization/) - Event data extraction
+- [Parameterization Guide](https://argoproj.github.io/argo-events/tutorials/02-parameterization/) - Event data extraction
 - [Trigger Conditions](https://argoproj.github.io/argo-events/sensors/trigger-conditions/) - Conditional triggers
 
 ## Key Points to Remember
