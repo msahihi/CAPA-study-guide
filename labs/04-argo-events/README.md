@@ -370,14 +370,14 @@ Test your knowledge with these scenarios:
 ### Official Documentation
 
 - [Argo Events Getting Started](https://argoproj.github.io/argo-events/quick_start/)
-- [EventSource Catalog](https://argoproj.github.io/argo-events/eventsources/setup/)
-- [Sensor Specification](https://argoproj.github.io/argo-events/sensors/sensor-introduction/)
-- [Trigger Types](https://argoproj.github.io/argo-events/sensors/triggers/)
+- [EventSource Catalog](https://argoproj.github.io/argo-events/concepts/event_source/)
+- [Sensor Specification](https://argoproj.github.io/argo-events/concepts/sensor/)
+- [Trigger Types](https://argoproj.github.io/argo-events/concepts/trigger/)
 
 ### Examples and Tutorials
 
 - [Official Examples Repository](https://github.com/argoproj/argo-events/tree/master/examples)
-- [Argo Events Best Practices](https://argoproj.github.io/argo-events/best-practices/)
+- [Argo Events Documentation](https://argoproj.github.io/argo-events/)
 - [Event Source Examples](https://github.com/argoproj/argo-events/tree/master/examples/event-sources)
 
 ### Community Resources

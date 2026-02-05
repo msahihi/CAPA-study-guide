@@ -1094,7 +1094,7 @@ spec:
 
 ## Study Resources
 
-- [CI/CD with Argo Workflows](https://argoproj.github.io/argo-workflows/use-cases/) - Use cases documentation
+- [CI/CD with Argo Workflows](https://argo-workflows.readthedocs.io/en/latest/use-cases/ci-cd/) - Use cases documentation
 - [WorkflowTemplates](https://argoproj.github.io/argo-workflows/workflow-templates/) - Template reference
 - [CronWorkflows](https://argoproj.github.io/argo-workflows/cron-workflows/) - Scheduled workflows guide
 - [Triggering Workflows](https://argoproj.github.io/argo-workflows/rest-api/) - API documentation

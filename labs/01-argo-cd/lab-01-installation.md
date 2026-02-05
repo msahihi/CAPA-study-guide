@@ -279,10 +279,10 @@ argocd version --client
 **Expected Output:**
 
 ```
-argocd: v2.9.3+c7bb5b6
-  BuildDate: 2023-12-04T17:48:00Z
-  GitCommit: c7bb5b6ed9c7c90d7b9e5e0e0e6d8a9f3d7c2c0a
-  GoVersion: go1.21.1
+argocd: v3.2.6+7d4f3e8
+  BuildDate: 2026-02-01T10:30:00Z
+  GitCommit: 7d4f3e8ed9c7c90d7b9e5e0e0e6d8a9f3d7c2c0a
+  GoVersion: go1.23.0
   Compiler: gc
   Platform: darwin/amd64
 ```
@@ -303,10 +303,10 @@ argocd version
 'admin:login' logged in successfully
 Context 'localhost:8080' updated
 
-argocd: v2.9.3+c7bb5b6
-  BuildDate: 2023-12-04T17:48:00Z
+argocd: v3.2.6+7d4f3e8
+  BuildDate: 2026-02-01T10:30:00Z
   ...
-argocd-server: v2.9.3+c7bb5b6
+argocd-server: v3.3.0+a1b2c3d
   ...
 ```
 

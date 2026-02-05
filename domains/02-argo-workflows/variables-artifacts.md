@@ -104,7 +104,7 @@ Access information about the pod running the template.
 
 ```yaml
 {{pod.name}}          # Pod name
-{{pod.name}}          # Pod namespace
+{{pod.namespace}}     # Pod namespace
 ```
 
 **Example:**

@@ -33,9 +33,9 @@ Practice these hands-on labs to reinforce your understanding:
 
 - [Argo Events Official Documentation](https://argoproj.github.io/argo-events/) - Complete reference guide
 - [Argo Events Getting Started](https://argoproj.github.io/argo-events/quick_start/) - Quick start guide
-- [Event Source Types](https://argoproj.github.io/argo-events/eventsources/setup/) - All supported event sources
+- [Event Source Types](https://argoproj.github.io/argo-events/concepts/event_source/) - All supported event sources
 - [Sensor Examples](https://github.com/argoproj/argo-events/tree/master/examples/sensors) - Official sensor examples
-- [Argo Events Best Practices](https://argoproj.github.io/argo-events/best-practices/) - Production deployment guidance
+- [Argo Events Documentation](https://argoproj.github.io/argo-events/) - Production deployment guidance
 
 ## Key Exam Topics
 

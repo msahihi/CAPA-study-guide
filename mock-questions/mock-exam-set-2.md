@@ -459,9 +459,9 @@ When Argo CD cannot access the source repository (deleted, unreachable, or crede
 
 Which AppProject field restricts which resource types can be deployed?
 
-A. `spec.resourceWhitelist`  
-B. `spec.clusterResourceWhitelist`  
-C. `spec.allowedResources`  
+A. `spec.namespaceResourceWhitelist`
+B. `spec.clusterResourceWhitelist`
+C. `spec.allowedResources`
 D. Both A and B
 
 **Correct Answer: D**

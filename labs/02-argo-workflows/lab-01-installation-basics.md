@@ -52,7 +52,7 @@ kubectl get namespace argo
 Install Argo Workflows using the official manifest:
 
 ```bash
-kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/install.yaml
+kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.7.9/install.yaml
 ```
 
 **What this installs:**
@@ -108,7 +108,7 @@ brew install argo
 **For Linux:**
 
 ```bash
-curl -sLO https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/argo-linux-amd64.gz
+curl -sLO https://github.com/argoproj/argo-workflows/releases/download/v3.7.9/argo-linux-amd64.gz
 gunzip argo-linux-amd64.gz
 chmod +x argo-linux-amd64
 sudo mv argo-linux-amd64 /usr/local/bin/argo
@@ -117,7 +117,7 @@ sudo mv argo-linux-amd64 /usr/local/bin/argo
 **For Windows (PowerShell):**
 
 ```powershell
-$url = "https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/argo-windows-amd64.gz"
+$url = "https://github.com/argoproj/argo-workflows/releases/download/v3.7.9/argo-windows-amd64.gz"
 Invoke-WebRequest -Uri $url -OutFile argo.gz
 # Extract and move to PATH
 ```
@@ -131,8 +131,8 @@ argo version
 Expected output shows both client and server versions:
 
 ```
-argo: v3.5.4
-  BuildDate: 2024-01-15T18:30:00Z
+argo: v3.7.9
+  BuildDate: 2026-01-28T10:00:00Z
   GitCommit: abc123def456
   ...
 ```
@@ -836,7 +836,7 @@ To remove Argo Workflows from your cluster:
 argo delete -n argo --all
 
 # Uninstall Argo Workflows
-kubectl delete -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/install.yaml
+kubectl delete -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.7.9/install.yaml
 
 # Delete the namespace
 kubectl delete namespace argo
@@ -845,6 +845,6 @@ kubectl delete namespace argo
 ## Additional Resources
 
 - [Argo Workflows Quick Start](https://argoproj.github.io/argo-workflows/quick-start/)
-- [Argo CLI Reference](https://argoproj.github.io/argo-workflows/cli/)
+- [Argo CLI Reference](https://argo-workflows.readthedocs.io/en/latest/cli/argo/)
 - [Workflow Concepts](https://argoproj.github.io/argo-workflows/workflow-concepts/)
 - [Argo Server Configuration](https://argoproj.github.io/argo-workflows/argo-server/)
