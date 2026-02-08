@@ -1659,8 +1659,8 @@ kubectl argo rollouts abort my-app
 # Pause rollout
 kubectl argo rollouts pause my-app
 
-# Resume rollout
-kubectl argo rollouts resume my-app
+# Continue paused rollout (use promote)
+kubectl argo rollouts promote my-app
 
 # Restart rollout (rolling restart)
 kubectl argo rollouts restart my-app
@@ -1673,9 +1673,6 @@ kubectl argo rollouts undo my-app --to-revision=3
 
 # Set image
 kubectl argo rollouts set image my-app my-container=new-image:v2
-
-# Get rollout history
-kubectl argo rollouts history my-app
 ```
 
 ### Dashboard
