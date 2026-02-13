@@ -2,14 +2,14 @@
 
 > Quick Reference for Certified Argo Project Associate
 
-**Version**: v1.0.0 | **Validated**: 2026-02-05 against Argo CD v3.3.0, Argo Workflows v3.7.9, Argo Rollouts v1.8.3, Argo Events v1.9.10
+**Version**: v2.0.0 | **Validated**: 2026-02-05 against Argo CD v3.3.0, Argo Workflows v3.7.9, Argo Rollouts v1.8.3, Argo Events v1.9.10 | **Key Points Extracted**: 2026-02-13
 
 ## Table of Contents
 
-1. [Argo CD - Continuous Delivery (35%)](#argo-cd)
-2. [Argo Workflows - Workflow Engine (25%)](#argo-workflows)
-3. [Argo Rollouts - Progressive Delivery (25%)](#argo-rollouts)
-4. [Argo Events - Event Automation (15%)](#argo-events)
+1. [Argo Workflows - Workflow Engine (36%)](#argo-workflows)
+2. [Argo CD - Continuous Delivery (34%)](#argo-cd)
+3. [Argo Rollouts - Progressive Delivery (18%)](#argo-rollouts)
+4. [Argo Events - Event Automation (12%)](#argo-events)
 5. [Essential Commands](#essential-commands)
 6. [Quick Reference Tables](#quick-reference-tables)
 7. [Common Patterns & Best Practices](#common-patterns--best-practices)
@@ -18,6 +18,131 @@
 ---
 
 ## Argo CD
+
+<details>
+<summary><strong>Key Concepts Summary</strong></summary>
+
+### Application Management
+
+*Source: [domains/01-argo-cd/application-management.md](domains/01-argo-cd/application-management.md)*
+
+- Applications can be created via UI, CLI, or declaratively using YAML
+- Declarative approach is preferred for GitOps and version control
+- App-of-Apps pattern manages multiple applications as a single unit
+- Repository credentials can be stored as Secrets with label `argocd.argoproj.io/secret-type: repository`
+- Repository credential templates allow reusing credentials for multiple repos
+- Projects provide logical grouping and RBAC for applications
+- Projects can restrict source repos, destinations, and resource types
+- ApplicationSets automate application generation using templates and generators
+- Common ApplicationSet generators: List, Git Directory, Git File, Cluster, Matrix
+- Matrix generator combines multiple generators for complex scenarios
+- Applications require finalizers for proper resource cleanup
+- Source can be Git repository or Helm chart
+- Destination specifies target cluster and namespace
+- Multiple sources can be used for advanced scenarios (e.g., separating values)
+
+### Core Concepts
+
+*Source: [domains/01-argo-cd/core-concepts.md](domains/01-argo-cd/core-concepts.md)*
+
+- Argo CD consists of three main components: API Server, Repository Server, and Application Controller
+- The API Server handles all API operations, authentication, and serves the Web UI
+- The Repository Server clones Git repositories and generates Kubernetes manifests
+- The Application Controller monitors applications and ensures desired state matches live state
+- GitOps principles: Declarative, Version Controlled, Automated, Continuously Reconciled
+- The Application CRD is the core resource defining what to deploy and where
+- Sync Status indicates if live state matches desired state (Synced/OutOfSync/Unknown)
+- Health Status indicates operational health (Healthy/Progressing/Degraded/Suspended/Missing/Unknown)
+- Applications require source (Git repo) and destination (cluster + namespace) configuration
+- Default reconciliation interval is 3 minutes (polling Git and cluster state)
+- Argo CD supports multiple manifest formats: plain YAML, Helm, Kustomize, Jsonnet
+- Sync waves control the order of resource deployment using annotations
+- Resource hooks (PreSync, Sync, PostSync, SyncFail) enable custom actions during sync
+- The `resources-finalizer.argocd.argoproj.io` finalizer ensures proper resource cleanup
+- Applications can use automated sync policies with prune and self-heal capabilities
+
+### Installation and Configuration
+
+*Source: [domains/01-argo-cd/installation-configuration.md](domains/01-argo-cd/installation-configuration.md)*
+
+- Argo CD can be installed using kubectl (non-HA/HA), Helm, or Operator
+- Non-HA installation is for development/testing; HA is for production
+- Initial admin password is stored in `argocd-initial-admin-secret`
+- CLI can be installed on Linux, macOS, and Windows
+- Port forwarding provides quick access: `kubectl port-forward svc/argocd-server -n argocd 8080:443`
+- Argo CD can be exposed via LoadBalancer, Ingress, or OpenShift Route
+- Main configuration is stored in `argocd-cm` ConfigMap
+- Command parameters are in `argocd-cmd-params-cm` ConfigMap
+- RBAC policies are configured in `argocd-rbac-cm` ConfigMap
+- Helm installation provides most flexibility with values.YAML
+- Default namespace is `argocd` but can be changed
+- High Availability requires Redis HA and multiple replicas
+- SSL/TLS can be terminated at ingress or passed through to Argo CD
+- Resource limits and requests should be configured for production
+- Argo CD UI provides visual interface for all operations
+
+### Multi-Cluster Management
+
+*Source: [domains/01-argo-cd/multi-cluster.md](domains/01-argo-cd/multi-cluster.md)*
+
+- Argo CD can manage applications in local (in-cluster) and external clusters
+- External clusters registered via `argocd cluster add` command
+- Cluster registration creates ServiceAccount and RBAC in target cluster
+- Cluster credentials stored as Secrets with label `argocd.argoproj.io/secret-type: cluster`
+- Cluster Secret contains server URL, name, and config (token, certificates)
+- In-cluster uses `https://kubernetes.default.svc` as server URL
+- Cloud-managed clusters (EKS, GKE, AKS) require exec provider config
+- Cluster labels enable targeted deployments with ApplicationSets
+- ApplicationSet cluster generator creates apps for matching clusters
+- Matrix generator combines cluster generator with others for complex scenarios
+- Hub-and-spoke architecture: central Argo CD manages multiple spoke clusters
+- Progressive rollout deploys to clusters sequentially
+- Cluster namespaces can be restricted in cluster Secret
+- Remove clusters with `argocd cluster rm` command
+- Cluster credentials should be rotated periodically for security
+
+### RBAC and Security
+
+*Source: [domains/01-argo-cd/rbac-security.md](domains/01-argo-cd/rbac-security.md)*
+
+- RBAC policies configured in `argocd-rbac-cm` ConfigMap
+- Policy format: `p, subject, resource, action, object, effect`
+- Resources: applications, clusters, repositories, projects, accounts
+- Actions: get, create, update, delete, sync, override, action/*
+- Group bindings map users/groups to roles using `g, user/group, role`
+- Default policy applies to all authenticated users
+- Dex enables SSO with multiple identity providers
+- Direct OIDC integration available without Dex
+- Local users defined in `argocd-cm` with `accounts.<name>` fields
+- API tokens generated per account with optional expiration
+- Repository credentials stored as Secrets with label `argocd.argoproj.io/secret-type: repository`
+- Cluster credentials stored as Secrets with label `argocd.argoproj.io/secret-type: cluster`
+- Webhook secrets configured for GitHub, GitLab, and Bitbucket
+- External Secrets Operator can manage Argo CD secrets
+- RBAC scopes control which claims are used for group mapping
+
+### Sync Strategies
+
+*Source: [domains/01-argo-cd/sync-strategies.md](domains/01-argo-cd/sync-strategies.md)*
+
+- Manual sync requires explicit user action; automated sync happens automatically
+- Prune deletes resources removed from Git; without prune, resources persist
+- Self-heal reverts manual cluster changes within 5 seconds
+- Sync options provide fine-grained control over sync behavior
+- CreateNamespace=true automatically creates target namespace
+- PruneLast=true prunes resources after all others are healthy
+- ServerSideApply=true recommended for CRDs and large resources
+- Sync waves control deployment order using annotations (lower first)
+- Default sync wave is 0; can be negative
+- Argo CD waits for wave N to be healthy before starting wave N+1
+- Hooks execute at specific sync phases: PreSync, Sync, PostSync, SyncFail
+- Hook deletion policies control when hook resources are removed
+- PreSync hooks run before applying manifests (e.g., migrations)
+- PostSync hooks run after successful sync (e.g., tests, warm-up)
+- SyncFail hooks run when sync fails (e.g., notifications, cleanup)
+- Retry strategy configures backoff for failed syncs
+
+</details>
 
 <details>
 <summary><strong>Core Architecture & Components</strong></summary>
@@ -419,6 +544,105 @@ stringData:
 ## Argo Workflows
 
 <details>
+<summary><strong>Key Concepts Summary</strong></summary>
+
+### CI/CD Integration
+
+*Source: [domains/02-argo-workflows/cicd-integration.md](domains/02-argo-workflows/cicd-integration.md)*
+
+- WorkflowTemplates are namespace-scoped and reusable workflow definitions
+- ClusterWorkflowTemplates are cluster-scoped and available across all namespaces
+- CronWorkflows schedule recurring workflow executions using cron syntax
+- Concurrency policies control how overlapping executions are handled
+- Workflows can be triggered via CLI, Kubernetes API, HTTP API, or events
+- Use `suspend` templates for manual approval gates in pipelines
+- `workflowTemplateRef` references a template for instantiation
+- `templateRef` references a specific template within a WorkflowTemplate
+- CronWorkflows support timezone configuration
+- Use `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` to manage history
+- Suspend CronWorkflows to temporarily disable scheduled executions
+- DAG workflows are ideal for complex CI/CD pipelines with parallel stages
+- Argo Events can trigger workflows based on external events
+- Artifact repositories are essential for passing build artifacts between stages
+- Resource templates enable Kubernetes resource management within workflows
+
+### DAG and Parallel Execution
+
+*Source: [domains/02-argo-workflows/dag-parallel.md](domains/02-argo-workflows/dag-parallel.md)*
+
+- DAG workflows define explicit task dependencies using `dependencies` field
+- Tasks without dependencies execute immediately in parallel
+- Tasks with dependencies wait for all dependencies to complete
+- Use `when` conditions for conditional task execution
+- `parallelism` at workflow level limits concurrent task execution
+- `withItems` creates parallel tasks from a static list
+- `withParam` creates parallel tasks from a dynamic JSON array
+- Fan-out pattern distributes work across parallel tasks
+- Fan-in pattern aggregates results from parallel tasks
+- DAG provides better visualization than steps for complex workflows
+- Tasks can access outputs from their dependencies
+- Failed dependencies prevent dependent tasks from running
+- Use `continueOn` to proceed even when dependencies fail
+- DAG workflows scale better for large numbers of parallel tasks
+- Dependencies create an implicit execution order graph
+
+### Templates and Steps
+
+*Source: [domains/02-argo-workflows/templates-steps.md](domains/02-argo-workflows/templates-steps.md)*
+
+- Container templates run Docker images with commands and arguments
+- Script templates allow inline code execution in specified languages
+- Resource templates manage Kubernetes resources within workflows
+- Suspend templates pause workflow execution for approval or timing
+- Steps in the same array execute in parallel
+- Steps in different arrays execute sequentially
+- Template inputs can include parameters and artifacts
+- Template outputs can generate parameters and artifacts
+- Parameters are simple values passed between templates
+- Artifacts are files or directories passed between templates
+- Use `{{inputs.parameters.name}}` to access input parameters
+- Use `{{steps.step-name.outputs.parameters.name}}` to reference outputs
+- Resource limits can be set per template
+- Environment variables support parameter interpolation
+
+### Variables and Artifacts
+
+*Source: [domains/02-argo-workflows/variables-artifacts.md](domains/02-argo-workflows/variables-artifacts.md)*
+
+- Workflow variables use double curly brace syntax: `{{variable}}`
+- Access workflow-level info with `{{workflow.name}}`, `{{workflow.namespace}}`, etc.
+- Reference step outputs with `{{steps.step-name.outputs.parameters.param-name}}`
+- Parameters are scalar values (strings, numbers, booleans)
+- Artifacts are files or directories passed between steps
+- Artifacts are automatically stored in the configured artifact repository
+- Use `from:` to pass artifacts from one step to another
+- Volume claims provide shared persistent storage across steps
+- `volumeClaimTemplates` create dynamic PVCs with the workflow
+- JSONPath extracts specific values from JSON output parameters
+- Output parameters can come from file paths or script stdout
+- Artifacts support S3, GCS, HTTP, and Git sources
+- Use `archive.none` to disable artifact compression
+- Optional artifacts won't fail if the file doesn't exist
+- EmptyDir volumes share data within a single pod only
+
+### Workflow Fundamentals
+
+*Source: [domains/02-argo-workflows/workflow-fundamentals.md](domains/02-argo-workflows/workflow-fundamentals.md)*
+
+- Workflows are Kubernetes CRDs that extend the cluster's API
+- The `entrypoint` field determines which template starts execution
+- Workflows progress through phases: Pending → Running → Succeeded/Failed
+- Templates are reusable building blocks within workflows
+- Use `steps` for sequential and parallel execution patterns
+- Conditional execution uses the `when` field with expressions
+- Retry strategies can automatically handle transient failures
+- Workflow parameters enable dynamic workflow behavior
+- Service accounts control workflow execution permissions
+- TTL strategies manage automatic cleanup of completed workflows
+
+</details>
+
+<details>
 <summary><strong>Workflow CRD Structure</strong></summary>
 
 ### Basic Workflow
@@ -779,6 +1003,61 @@ spec:
 ## Argo Rollouts
 
 <details>
+<summary><strong>Key Concepts Summary</strong></summary>
+
+### Analysis and Metrics
+
+*Source: [domains/03-argo-rollouts/analysis-metrics.md](domains/03-argo-rollouts/analysis-metrics.md)*
+
+- AnalysisTemplates define reusable metric queries and validation logic
+- Multiple metric providers supported: Prometheus, Datadog, CloudWatch, New Relic, etc.
+- Success/failure conditions use expression language for flexibility
+- AnalysisRuns are instances created from templates during rollouts
+- Background analysis runs throughout canary deployment
+- Step-level analysis acts as validation gates
+- Failure limits and inconclusive limits prevent flaky metric failures
+- Initial delay allows time for metrics to stabilize
+- Count parameter limits number of measurements
+- Analysis failures trigger automatic rollback
+- Templates can accept arguments for reusability
+- Multiple metrics in single template for comprehensive validation
+- Web provider enables custom metric sources via HTTP
+
+### Blue-Green Deployments
+
+*Source: [domains/03-argo-rollouts/blue-green.md](domains/03-argo-rollouts/blue-green.md)*
+
+- Blue-Green requires two services: active (production) and preview (testing)
+- Argo Rollouts controller automatically manages service selector updates
+- Promotion switches all traffic instantly from old to new version
+- AutoPromotionEnabled controls whether promotion happens automatically
+- ScaleDownDelaySeconds provides a rollback window before removing old version
+- Abort command immediately reverts to stable version
+- Preview service allows testing new version before production promotion
+- Blue-Green uses more resources as it runs two full environments
+- Zero-downtime deployments with instant rollback capability
+- Ideal for applications requiring thorough validation before release
+
+### Canary Deployments
+
+*Source: [domains/03-argo-rollouts/canary.md](domains/03-argo-rollouts/canary.md)*
+
+- Canary deployments gradually shift traffic from old to new version
+- Traffic weight controls percentage of requests to canary version
+- Steps define the progression: setWeight, pause, analysis
+- Pause duration can be time-based or indefinite (manual gate)
+- Traffic routing requires ingress controller or service mesh integration
+- Automated promotion based on analysis results
+- Analysis failures trigger automatic rollback
+- MaxSurge and MaxUnavailable control pod scaling during rollout
+- SetCanaryScale provides fine-grained replica control
+- Canary uses less resources than Blue-Green (no full duplication)
+- Suitable for gradual validation with real user traffic
+- Multiple validation gates reduce deployment risk
+
+</details>
+
+<details>
 <summary><strong>Rollout vs Deployment</strong></summary>
 
 | Feature | Deployment | Rollout |
@@ -1075,6 +1354,31 @@ trafficRouting:
 ---
 
 ## Argo Events
+
+<details>
+<summary><strong>Key Concepts Summary</strong></summary>
+
+### Triggers and Actions
+
+*Source: [domains/04-argo-events/triggers-actions.md](domains/04-argo-events/triggers-actions.md)*
+
+- Triggers define what actions to execute when event dependencies are satisfied
+- Argo Workflow trigger (argoWorkflow) is a specialized trigger for submitting workflows
+- Kubernetes resource trigger (k8s) can create, update, or patch any Kubernetes resource
+- HTTP triggers enable integration with external REST APIs and webhooks
+- Multiple triggers can be executed for a single event or set of events
+- Event data can be extracted and passed to triggers using templates like `{{.Input.body.field}}`
+- Trigger conditions allow conditional execution based on event data
+- Triggers support retry strategies for handling transient failures
+- Parameters can be used to make triggers reusable and flexible
+- WorkflowTemplates can be referenced instead of defining workflows inline
+- Trigger operations include create, update, patch for K8s resources; submit for workflows
+- Data transformation can be applied using dataTemplate or JQ filters
+- Slack, Kafka, NATS, and other integrations are supported as first-class trigger types
+- Triggers execute in parallel by default unless dependencies are chained
+- Log triggers are useful for debugging event flow
+
+</details>
 
 <details>
 <summary><strong>Core Components</strong></summary>
