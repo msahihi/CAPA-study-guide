@@ -1,6 +1,6 @@
 # Argo Events Labs
 
-Hands-on labs for mastering Argo Events - Event-Based Automation (15% of CAPA exam).
+Hands-on labs for mastering Argo Events - Event-Based Automation (12% of CAPA exam).
 
 ## Overview
 
@@ -387,7 +387,7 @@ Test your knowledge with these scenarios:
 
 ## Exam Preparation
 
-These labs cover approximately 15% of the CAPA exam content. Focus on:
+These labs cover approximately 12% of the CAPA exam content. Focus on:
 
 ### Key Exam Topics
 

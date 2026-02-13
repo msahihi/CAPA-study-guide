@@ -783,7 +783,7 @@ kubectl argo rollouts retry rollout rollout-demo -n rollouts-demo
 
 Continue to the next lab:
 
-- [Lab 02: Blue-Green Deployments](lab-02-blue-green.md) - Implement blue-green deployment strategy with active and preview services
+- [Lab 02: Blue-Green Deployments](lab-02-deployment-strategies.md) - Implement blue-green deployment strategy with active and preview services
 
 ## Additional Resources
 

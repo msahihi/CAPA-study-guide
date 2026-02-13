@@ -1,4 +1,4 @@
-# Argo Rollouts - Progressive Delivery (25%)
+# Argo Rollouts - Progressive Delivery (18%)
 
 Argo Rollouts is a Kubernetes controller and set of CRDs that provide advanced deployment capabilities such as blue-green, canary, canary analysis, experimentation, and progressive delivery features. It enables safe and gradual rollout of application changes while maintaining high availability and reducing risk.
 
@@ -6,7 +6,7 @@ Argo Rollouts is a Kubernetes controller and set of CRDs that provide advanced d
 
 ### [Rollout Strategies Overview](rollout-strategies.md)
 
-Understanding Rollout resources, comparison with standard Kubernetes Deployments, rollout strategy types, and rollout status phases.
+Understanding Rollout resources, comparison with standard Kubernetes Deployments, rollout strategy types (blue-green and canary), rollout status phases, and traffic management integration with ingress controllers (NGINX, Istio) and service meshes.
 
 ### [Blue-Green Deployments](blue-green.md)
 
@@ -20,17 +20,12 @@ Implementing Canary deployment strategy with traffic splitting, progressive step
 
 Configuring AnalysisTemplates, integrating metric providers (Prometheus, Datadog, CloudWatch), defining success and failure conditions, and running analysis.
 
-### [Traffic Management](traffic-management.md)
-
-Integrating with ingress controllers (NGINX, ALB, Istio), service mesh support, and configuring traffic routing rules for progressive delivery.
-
 ## Related Labs
 
 Practice these hands-on labs to reinforce your understanding:
 
 - [Lab 01: Installation and Basics](../../labs/03-argo-rollouts/lab-01-installation-basics.md) - 20 minutes
-- [Lab 02: Blue-Green Deployments](../../labs/03-argo-rollouts/lab-02-blue-green.md) - 30 minutes
-- [Lab 03: Canary Deployments](../../labs/03-argo-rollouts/lab-03-canary.md) - 35 minutes
+- [Deployment Strategies](../../labs/03-argo-rollouts/lab-02-deployment-strategies.md) - 60 minutes (covers both blue-green and canary)
 - [Lab 04: Analysis and Metrics](../../labs/03-argo-rollouts/lab-04-analysis.md) - 45 minutes
 - [Lab 05: Traffic Management](../../labs/03-argo-rollouts/lab-05-traffic-management.md) - 40 minutes
 

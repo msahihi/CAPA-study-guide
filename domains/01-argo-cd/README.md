@@ -1,4 +1,4 @@
-# Argo CD - Continuous Delivery (35%)
+# Argo CD - Continuous Delivery (34%)
 
 Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes. It automates the deployment of applications by synchronizing the desired application state from Git repositories with the actual state in Kubernetes clusters.
 

@@ -1028,3 +1028,15 @@ For practical exercises and labs on application management, see:
 
 - [Lab 02: Deploying Your First Application](../../labs/01-argo-cd/lab-02-first-app.md)
 - [Lab 05: Working with Helm Charts](../../labs/01-argo-cd/lab-05-helm.md)
+
+## Application Health Assessment
+
+Health assessment monitors application readiness and availability states.
+
+## Application Sync Automation
+
+Automation streamlines application deployment and reduces manual intervention.
+
+## Application Notifications
+
+Notifications alert teams about deployment status and application health changes.

@@ -24,7 +24,15 @@ This repository provides organized, easily accessible content to support CAPA ex
 
 ## Topics Covered
 
-### [Argo CD - Continuous Delivery](domains/01-argo-cd/README.md) (35%)
+### [Argo Workflows - Workflow Engine](domains/02-argo-workflows/README.md) (36%)
+
+- [Workflow Fundamentals](domains/02-argo-workflows/workflow-fundamentals.md)
+- [Workflow Templates and Steps](domains/02-argo-workflows/templates-steps.md)
+- [DAG and Parallel Execution](domains/02-argo-workflows/dag-parallel.md)
+- [Workflow Variables and Artifacts](domains/02-argo-workflows/variables-artifacts.md)
+- [CI/CD Integration](domains/02-argo-workflows/cicd-integration.md)
+
+### [Argo CD - Continuous Delivery](domains/01-argo-cd/README.md) (34%)
 
 - [Core Concepts and Architecture](domains/01-argo-cd/core-concepts.md)
 - [Installation and Configuration](domains/01-argo-cd/installation-configuration.md)
@@ -33,28 +41,20 @@ This repository provides organized, easily accessible content to support CAPA ex
 - [RBAC and Security](domains/01-argo-cd/rbac-security.md)
 - [Multi-Cluster Management](domains/01-argo-cd/multi-cluster.md)
 
-### [Argo Workflows - Workflow Engine](domains/02-argo-workflows/README.md) (25%)
-
-- [Workflow Fundamentals](domains/02-argo-workflows/workflow-fundamentals.md)
-- [Workflow Templates and Steps](domains/02-argo-workflows/templates-steps.md)
-- [DAG and Parallel Execution](domains/02-argo-workflows/dag-parallel.md)
-- [Workflow Variables and Artifacts](domains/02-argo-workflows/variables-artifacts.md)
-- [CI/CD Integration](domains/02-argo-workflows/cicd-integration.md)
-
-### [Argo Rollouts - Progressive Delivery](domains/03-argo-rollouts/README.md) (25%)
+### [Argo Rollouts - Progressive Delivery](domains/03-argo-rollouts/README.md) (18%)
 
 - [Rollout Strategies Overview](domains/03-argo-rollouts/rollout-strategies.md)
 - [Blue-Green Deployments](domains/03-argo-rollouts/blue-green.md)
 - [Canary Deployments](domains/03-argo-rollouts/canary.md)
 - [Analysis and Metrics](domains/03-argo-rollouts/analysis-metrics.md)
-- [Traffic Management](domains/03-argo-rollouts/traffic-management.md)
+- [Traffic Management](domains/03-argo-rollouts/rollout-strategies.md)
 
-### [Argo Events - Event-Based Automation](domains/04-argo-events/README.md) (15%)
+### [Argo Events - Event-Based Automation](domains/04-argo-events/README.md) (12%)
 
 - [Event Sources and Sensors](domains/04-argo-events/event-sources-sensors.md)
-- [Event Bus Configuration](domains/04-argo-events/event-bus.md)
+- [Event Bus Configuration](domains/04-argo-events/event-sources-sensors.md)
 - [Triggers and Actions](domains/04-argo-events/triggers-actions.md)
-- [Integration Patterns](domains/04-argo-events/integration-patterns.md)
+- [Integration Patterns](domains/04-argo-events/triggers-actions.md)
 
 ## External Links
 
@@ -90,25 +90,25 @@ Before starting your CAPA preparation, ensure you have:
 
 ### Recommended Study Approach
 
-**Week 1-2: Argo CD - Continuous Delivery (35% of exam)**
+**Week 1-2: Argo Workflows - Workflow Engine (36% of exam)**
+
+- Study [Argo Workflows domain](domains/02-argo-workflows/README.md)
+- Complete all 8 labs in [labs/02-argo-workflows/](labs/02-argo-workflows/)
+- Focus: Workflow creation, templates, DAG patterns, artifacts, scheduling
+
+**Week 3-4: Argo CD - Continuous Delivery (34% of exam)**
 
 - Study [Argo CD domain](domains/01-argo-cd/README.md)
 - Complete all 6 labs in [labs/01-argo-cd/](labs/01-argo-cd/)
 - Focus: Application deployment, sync strategies, GitOps principles
 
-**Week 3: Argo Workflows - Workflow Engine (25% of exam)**
-
-- Study [Argo Workflows domain](domains/02-argo-workflows/README.md)
-- Complete all 5 labs in [labs/02-argo-workflows/](labs/02-argo-workflows/)
-- Focus: Workflow creation, templates, DAG patterns
-
-**Week 4: Argo Rollouts - Progressive Delivery (25% of exam)**
+**Week 5: Argo Rollouts - Progressive Delivery (18% of exam)**
 
 - Study [Argo Rollouts domain](domains/03-argo-rollouts/README.md)
-- Complete all 5 labs in [labs/03-argo-rollouts/](labs/03-argo-rollouts/)
+- Complete all 4 labs in [labs/03-argo-rollouts/](labs/03-argo-rollouts/)
 - Focus: Deployment strategies, canary analysis, traffic shifting
 
-**Week 5: Argo Events - Event Automation (15% of exam)**
+**Week 5: Argo Events - Event Automation (12% of exam)**
 
 - Study [Argo Events domain](domains/04-argo-events/README.md)
 - Complete all 4 labs in [labs/04-argo-events/](labs/04-argo-events/)

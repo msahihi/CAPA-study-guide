@@ -19,7 +19,7 @@ By the end of this lab, you will be able to:
 
 ## Prerequisites
 
-- Completed [Lab 03: Canary Deployments](lab-03-canary.md)
+- Completed [Lab 03: Canary Deployments](lab-02-deployment-strategies.md)
 - Argo Rollouts controller installed and running
 - kubectl Argo Rollouts plugin installed
 - Access to a Kubernetes cluster with sufficient resources
