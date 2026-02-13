@@ -706,6 +706,382 @@ spec:
 - Resource limits can be set per template
 - Environment variables support parameter interpolation
 
+## Retry and Timeout Strategies
+
+Retry and timeout strategies ensure workflow resilience by handling transient failures and preventing indefinite execution. These patterns are essential for production workflows that interact with external services or handle unreliable operations.
+
+### Retry Policies
+
+Retry policies automatically re-execute failed steps based on configurable parameters.
+
+#### Basic Retry Configuration
+
+```yaml
+templates:
+- name: flaky-task
+  retryStrategy:
+    limit: 3
+  container:
+    image: alpine:latest
+    command: [sh, -c]
+    args: ["exit $((RANDOM % 2))"]  # Randomly succeeds or fails
+```
+
+#### Retry with Backoff
+
+Exponential backoff prevents overwhelming external services during retries.
+
+```yaml
+templates:
+- name: api-call
+  retryStrategy:
+    limit: 5
+    retryPolicy: Always
+    backoff:
+      duration: "1"      # Initial duration in seconds
+      factor: 2          # Multiplier for each retry
+      maxDuration: "1m"  # Maximum backoff duration
+  container:
+    image: curlimages/curl:latest
+    command: [sh, -c]
+    args: ["curl -f https://api.example.com/data || exit 1"]
+```
+
+**Backoff Calculation:**
+
+- Retry 1: 1s delay
+- Retry 2: 2s delay (1s × 2)
+- Retry 3: 4s delay (2s × 2)
+- Retry 4: 8s delay (4s × 2)
+- Retry 5: 16s delay (capped at maxDuration if specified)
+
+#### Conditional Retry Policies
+
+Control which failure conditions trigger retries.
+
+```yaml
+templates:
+- name: critical-operation
+  retryStrategy:
+    limit: 3
+    retryPolicy: OnFailure  # Options: Always, OnFailure, OnError, OnTransientError
+    backoff:
+      duration: "5"
+      factor: 2
+      maxDuration: "5m"
+  container:
+    image: alpine:latest
+    command: [sh, -c]
+    args:
+      - |
+        # Simulates operation with different exit codes
+        STATUS=$((RANDOM % 4))
+        echo "Operation status: $STATUS"
+        exit $STATUS
+```
+
+**Retry Policy Options:**
+
+- `Always`: Retry on any error or failure
+- `OnFailure`: Retry on non-zero exit codes
+- `OnError`: Retry on workflow errors (e.g., image pull failures)
+- `OnTransientError`: Retry only on transient errors (network issues, temporary resource unavailability)
+
+#### Expression-Based Retry
+
+Use expressions to determine retry eligibility based on step outputs.
+
+```yaml
+templates:
+- name: smart-retry
+  retryStrategy:
+    limit: 3
+    expression: "asInt(lastRetry.exitCode) != 2"  # Don't retry if exit code is 2
+    backoff:
+      duration: "10"
+  script:
+    image: python:3.9
+    command: [python]
+    source: |
+      import sys
+      import random
+
+      # Exit with code 2 for unrecoverable errors
+      if random.random() < 0.2:
+          print("Unrecoverable error")
+          sys.exit(2)
+
+      # Exit with code 1 for retryable errors
+      if random.random() < 0.5:
+          print("Retryable error")
+          sys.exit(1)
+
+      print("Success")
+      sys.exit(0)
+```
+
+### Timeout Strategies
+
+Timeouts prevent workflows from running indefinitely and ensure predictable execution.
+
+#### Step-Level Timeouts
+
+Set maximum execution time for individual steps.
+
+```yaml
+templates:
+- name: time-limited-task
+  timeout: "5m"  # Step times out after 5 minutes
+  container:
+    image: alpine:latest
+    command: [sh, -c]
+    args:
+      - |
+        echo "Starting long-running task..."
+        sleep 300  # 5 minutes
+        echo "Task completed"
+```
+
+#### Workflow-Level Timeouts
+
+Control maximum execution time for the entire workflow.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: timeout-workflow-
+spec:
+  activeDeadlineSeconds: 600  # Workflow times out after 10 minutes
+  entrypoint: main
+  templates:
+  - name: main
+    steps:
+    - - name: step-1
+        template: task
+    - - name: step-2
+        template: task
+    - - name: step-3
+        template: task
+
+  - name: task
+    container:
+      image: alpine:latest
+      command: [sh, -c]
+      args: ["echo 'Processing...' && sleep 60"]
+```
+
+#### Combined Retry and Timeout
+
+Use both strategies together for robust error handling.
+
+```yaml
+templates:
+- name: resilient-operation
+  timeout: "2m"      # Each attempt times out after 2 minutes
+  retryStrategy:
+    limit: 3
+    retryPolicy: OnError
+    backoff:
+      duration: "10"
+      factor: 2
+      maxDuration: "1m"
+  container:
+    image: curlimages/curl:latest
+    command: [sh, -c]
+    args:
+      - |
+        # This will timeout if curl takes > 2 minutes
+        # Then retry up to 3 times with exponential backoff
+        curl -m 120 -f https://api.example.com/slow-endpoint || exit 1
+```
+
+### Practical Patterns
+
+#### Database Connection with Retry
+
+```yaml
+templates:
+- name: db-operation
+  retryStrategy:
+    limit: 5
+    retryPolicy: OnTransientError
+    backoff:
+      duration: "2"
+      factor: 2
+      maxDuration: "30"
+  timeout: "1m"
+  script:
+    image: postgres:14
+    command: [bash]
+    source: |
+      #!/bin/bash
+
+      # Attempt database connection
+      psql -h db.example.com -U user -d database -c "SELECT 1;" > /dev/null 2>&1
+
+      if [ $? -ne 0 ]; then
+        echo "Database connection failed"
+        exit 1
+      fi
+
+      echo "Database operation successful"
+      exit 0
+```
+
+#### API Call with Circuit Breaker Pattern
+
+```yaml
+templates:
+- name: api-with-circuit-breaker
+  inputs:
+    parameters:
+    - name: endpoint
+  retryStrategy:
+    limit: 3
+    expression: "asInt(lastRetry.exitCode) != 3"  # Exit code 3 = circuit open
+    backoff:
+      duration: "5"
+      factor: 2
+  timeout: "30s"
+  script:
+    image: python:3.9
+    command: [python]
+    source: |
+      import requests
+      import sys
+      import os
+
+      endpoint = "{{inputs.parameters.endpoint}}"
+
+      try:
+          response = requests.get(endpoint, timeout=25)
+
+          if response.status_code >= 500:
+              # Server error - retryable
+              print(f"Server error: {response.status_code}")
+              sys.exit(1)
+          elif response.status_code == 429:
+              # Rate limited - circuit breaker triggered
+              print("Rate limit exceeded - circuit breaker open")
+              sys.exit(3)
+          elif response.status_code >= 400:
+              # Client error - not retryable
+              print(f"Client error: {response.status_code}")
+              sys.exit(2)
+          else:
+              print("API call successful")
+              sys.exit(0)
+
+      except requests.Timeout:
+          print("Request timeout")
+          sys.exit(1)  # Retryable
+      except requests.RequestException as e:
+          print(f"Request failed: {e}")
+          sys.exit(1)  # Retryable
+```
+
+#### File Download with Progress Tracking
+
+```yaml
+templates:
+- name: download-with-retry
+  inputs:
+    parameters:
+    - name: url
+    - name: destination
+  retryStrategy:
+    limit: 5
+    retryPolicy: OnFailure
+    backoff:
+      duration: "5"
+      factor: 2
+  timeout: "10m"
+  script:
+    image: alpine:latest
+    command: [sh]
+    source: |
+      #!/bin/sh
+
+      URL="{{inputs.parameters.url}}"
+      DEST="{{inputs.parameters.destination}}"
+
+      echo "Downloading from $URL..."
+
+      # Use wget with retry and progress tracking
+      wget --tries=1 --timeout=60 --progress=dot:giga -O "$DEST" "$URL"
+
+      if [ $? -ne 0 ]; then
+        echo "Download failed"
+        exit 1
+      fi
+
+      echo "Download completed successfully"
+      exit 0
+  outputs:
+    artifacts:
+    - name: downloaded-file
+      path: "{{inputs.parameters.destination}}"
+```
+
+### Best Practices
+
+#### 1. Set Appropriate Timeout Values
+
+```yaml
+# Short-lived operations (API calls)
+timeout: "30s"
+
+# Medium operations (data processing)
+timeout: "5m"
+
+# Long operations (large file transfers)
+timeout: "30m"
+
+# Workflow-level timeout (sum of all steps + buffer)
+activeDeadlineSeconds: 3600  # 1 hour
+```
+
+#### 2. Use Exponential Backoff
+
+Always use backoff for external service calls to avoid overwhelming services during outages.
+
+```yaml
+retryStrategy:
+  limit: 5
+  backoff:
+    duration: "1"
+    factor: 2
+    maxDuration: "5m"
+```
+
+#### 3. Distinguish Transient from Permanent Failures
+
+Use exit codes to indicate failure types:
+
+- Exit code 0: Success
+- Exit code 1: Transient failure (network, temporary unavailability)
+- Exit code 2: Permanent failure (invalid input, authentication)
+- Exit code 3+: Custom failure types (circuit breaker, rate limit)
+
+#### 4. Combine Timeout with Retry
+
+```yaml
+timeout: "2m"       # Prevent individual attempts from hanging
+retryStrategy:
+  limit: 3          # Retry failed attempts
+  backoff:
+    duration: "10"
+```
+
+#### 5. Monitor Retry Metrics
+
+Track retry behavior to identify:
+
+- Frequently retried steps (may need reliability improvements)
+- Steps that exhaust retry limits (may need increased limits or fixes)
+- Average retry counts (indicates external service health)
+
 ## Hands-On Practice
 
 - [Lab 02: Templates and Steps](../../labs/02-argo-workflows/lab-02-templates-steps.md) - Practice creating different template types, passing parameters and artifacts, and building multi-step workflows

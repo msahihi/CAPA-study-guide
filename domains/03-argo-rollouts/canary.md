@@ -518,6 +518,6 @@ spec:
 
 ## Hands-On Practice
 
-- [Lab 03: Canary Deployments](../../labs/03-argo-rollouts/lab-03-canary.md) - Create basic canary rollouts
+- [Lab 03: Canary Deployments](../../labs/03-argo-rollouts/lab-02-deployment-strategies.md) - Create basic canary rollouts
 - [Lab 04: Analysis and Metrics](../../labs/03-argo-rollouts/lab-04-analysis.md) - Implement canary with automated metrics-based validation
 - [Lab 05: Traffic Management](../../labs/03-argo-rollouts/lab-05-traffic-management.md) - Configure traffic routing with NGINX ingress

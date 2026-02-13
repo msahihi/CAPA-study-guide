@@ -301,27 +301,208 @@ spec:
       scaleDownDelaySeconds: 30
 ```
 
-## Study Resources
+## Traffic Management
 
-- [Argo Rollouts Concepts](https://argoproj.github.io/argo-rollouts/concepts/) - Core concepts documentation
-- [Rollout Specification](https://argoproj.github.io/argo-rollouts/features/specification/) - Complete spec reference
-- [kubectl Plugin Installation](https://argoproj.github.io/argo-rollouts/installation/#kubectl-plugin-installation) - CLI tool setup
-- [Progressive Delivery FAQ](https://argoproj.github.io/argo-rollouts/FAQ/) - Common questions
+Traffic management enables fine-grained control over request routing between application versions during progressive delivery.
 
-## Key Points to Remember
+### Traffic Management Architecture
 
-- Rollouts are custom resources that extend Kubernetes Deployments with advanced strategies
-- Blue-Green provides instant switching between versions with full environments
-- Canary provides gradual traffic shifting with multiple validation stages
-- Rollout status phases include Healthy, Progressing, Degraded, Paused, and Unknown
-- kubectl Argo Rollouts plugin provides convenient commands for managing rollouts
-- Rollouts maintain multiple ReplicaSets for stable and preview versions
-- Manual promotion gates allow human verification before proceeding
-- Rollouts can be paused, resumed, promoted, or aborted at any time
-- Rollback capability allows quick reversion to previous stable versions
+```
+                    ┌─────────────────┐
+                    │  Ingress/       │
+                    │  Service Mesh   │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  Traffic Split  │
+                    │  20% │ 80%      │
+                    └────┬─────┬──────┘
+                         │     │
+                 ┌───────▼─┐ ┌─▼────────┐
+                 │ Canary  │ │  Stable  │
+                 │ Service │ │ Service  │
+                 └─────────┘ └──────────┘
+```
+
+### Required Services for Traffic Management
+
+```yaml
+# Stable Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-stable
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: my-app
+---
+# Canary Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-canary
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: my-app
+```
+
+### NGINX Ingress Controller Integration
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: my-app
+spec:
+  replicas: 5
+  strategy:
+    canary:
+      canaryService: my-app-canary
+      stableService: my-app-stable
+      trafficRouting:
+        nginx:
+          stableIngress: my-app-ingress
+      steps:
+      - setWeight: 20
+      - pause: {duration: 1m}
+      - setWeight: 50
+      - pause: {duration: 1m}
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v1.0.0
+        ports:
+        - containerPort: 8080
+```
+
+**Corresponding NGINX Ingress:**
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: my-app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app-stable
+            port:
+              number: 80
+```
+
+### Service Mesh Integration (Istio)
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: my-app
+spec:
+  replicas: 5
+  strategy:
+    canary:
+      canaryService: my-app-canary
+      stableService: my-app-stable
+      trafficRouting:
+        istio:
+          virtualService:
+            name: my-app-vsvc
+            routes:
+            - primary
+      steps:
+      - setWeight: 10
+      - pause: {duration: 2m}
+      - setWeight: 30
+      - pause: {duration: 2m}
+      - setWeight: 50
+      - pause: {duration: 2m}
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: my-app:v1.0.0
+```
+
+**Corresponding Istio VirtualService:**
+
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: my-app-vsvc
+spec:
+  hosts:
+  - my-app.example.com
+  http:
+  - name: primary
+    route:
+    - destination:
+        host: my-app-stable
+      weight: 100
+    - destination:
+        host: my-app-canary
+      weight: 0
+```
+
+### Traffic Management Strategies
+
+**Weight-Based Routing:**
+
+- Percentage-based traffic distribution
+- Gradual increase during canary
+- Works with NGINX, Istio, ALB, Traefik
+
+**Header-Based Routing:**
+
+- Route specific users to canary
+- A/B testing scenarios
+- Beta testing groups
+
+**Mirroring (Shadow Traffic):**
+
+- Duplicate production traffic to canary
+- Test without affecting users
+- Supported by Istio
+
+### Traffic Management Best Practices
+
+1. **Use Separate Services**: Always use separate stable and canary services for traffic management
+2. **Start Small**: Begin with 5-10% traffic to canary
+3. **Monitor Metrics**: Watch error rates, latency, throughput during rollout
+4. **Progressive Increase**: Use multiple small steps rather than large jumps
+5. **Automated Rollback**: Configure analysis templates to automatically abort on failures
+6. **Test Header Routing**: Use headers for internal testing before general availability
 
 ## Hands-On Practice
 
 - [Lab 01: Installation and Basics](../../labs/03-argo-rollouts/lab-01-installation-basics.md) - Install controller and kubectl plugin
-- [Lab 02: Blue-Green Deployments](../../labs/03-argo-rollouts/lab-02-blue-green.md) - Create and manage basic rollouts with different strategies
-- [Lab 03: Canary Deployments](../../labs/03-argo-rollouts/lab-03-canary.md) - Implement canary deployments
+- [Deployment Strategies](../../labs/03-argo-rollouts/lab-02-deployment-strategies.md) - Compare and implement blue-green and canary deployments
+- [Lab 04: Analysis and Metrics](../../labs/03-argo-rollouts/lab-04-analysis.md) - Automated canary analysis
+- [Lab 05: Traffic Management](../../labs/03-argo-rollouts/lab-05-traffic-management.md) - Advanced traffic routing patterns

@@ -1,4 +1,4 @@
-# Argo Events - Event-Based Automation (15%)
+# Argo Events - Event-Based Automation (12%)
 
 Argo Events is an event-driven workflow automation framework for Kubernetes. It enables you to trigger Argo Workflows, Kubernetes resources, and other actions in response to events from various sources like webhooks, calendars, message queues, and Kubernetes resources. Argo Events follows a declarative approach to define event sources, event bus, sensors, and triggers for building reactive, event-driven systems.
 
@@ -6,19 +6,11 @@ Argo Events is an event-driven workflow automation framework for Kubernetes. It 
 
 ### [Event Sources and Sensors](event-sources-sensors.md)
 
-Understanding the EventSource CRD for capturing events from various sources (webhook, calendar, resource, message queues), the Sensor CRD for defining event dependencies and triggers, different event source types, and how sensors process events.
-
-### [Event Bus](event-bus.md)
-
-Learning the event bus architecture that connects event sources to sensors, configuring NATS/JetStream as the event bus implementation, setting up event bus for different namespaces, and understanding event routing and delivery guarantees.
+Understanding the EventSource CRD for capturing events from various sources (webhook, calendar, resource, message queues), the Sensor CRD for defining event dependencies and triggers, event bus architecture using NATS/JetStream, and how the event bus connects sources to sensors.
 
 ### [Triggers and Actions](triggers-actions.md)
 
-Exploring different trigger types supported by sensors, creating trigger templates for various actions, defining trigger conditions and filters, and implementing actions like triggering Argo Workflows, creating Kubernetes resources, and making HTTP requests.
-
-### [Integration Patterns](integration-patterns.md)
-
-Implementing common integration patterns including CI/CD automation, webhook-based automation for GitHub/GitLab events, resource watching for Kubernetes object changes, calendar-based scheduled triggers, and integration with external systems and message queues.
+Exploring different trigger types supported by sensors, creating trigger templates for various actions, defining trigger conditions and filters, implementing common integration patterns (CI/CD automation, webhook processing, resource watching, scheduled operations), and triggering Argo Workflows or Kubernetes resources.
 
 ## Related Labs
 
@@ -26,8 +18,8 @@ Practice these hands-on labs to reinforce your understanding:
 
 - [Lab 01: Installation and Basics](../../labs/04-argo-events/lab-01-installation-basics.md) - 20 minutes
 - [Lab 02: Event Sources](../../labs/04-argo-events/lab-02-event-sources.md) - 35 minutes
-- [Lab 03: Triggers](../../labs/04-argo-events/lab-03-triggers.md) - 40 minutes
-- [Lab 04: Integration with Argo Workflows](../../labs/04-argo-events/lab-04-integration.md) - 45 minutes
+- [Lab 03: Sensors](../../labs/04-argo-events/lab-02-event-sources.md) - 40 minutes
+- [Lab 04: Integrations](../../labs/04-argo-events/lab-02-event-sources.md) - 45 minutes
 
 ## Study Resources
 

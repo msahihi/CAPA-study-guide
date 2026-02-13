@@ -409,4 +409,4 @@ spec:
 
 ## Hands-On Practice
 
-- [Lab 02: Blue-Green Deployments](../../labs/03-argo-rollouts/lab-02-blue-green.md) - Implement Blue-Green deployments with manual and automatic promotion
+- [Lab 02: Blue-Green Deployments](../../labs/03-argo-rollouts/lab-02-deployment-strategies.md) - Implement Blue-Green deployments with manual and automatic promotion

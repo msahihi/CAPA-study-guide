@@ -43,8 +43,8 @@ Each lab includes:
 ### Domain 3: Argo Rollouts - Progressive Delivery
 
 - [Lab 01: Installing Argo Rollouts and Basics](03-argo-rollouts/lab-01-installation-basics.md) - 20 minutes
-- [Lab 02: Blue-Green Deployments](03-argo-rollouts/lab-02-blue-green.md) - 35 minutes
-- [Lab 03: Canary Deployments](03-argo-rollouts/lab-03-canary.md) - 40 minutes
+- [Lab 02: Blue-Green Deployments](03-argo-rollouts/lab-02-deployment-strategies.md) - 35 minutes
+- [Lab 03: Canary Deployments](03-argo-rollouts/lab-02-deployment-strategies.md) - 40 minutes
 - [Lab 04: Analysis and Metrics](03-argo-rollouts/lab-04-analysis.md) - 45 minutes
 - [Lab 05: Traffic Management](03-argo-rollouts/lab-05-traffic-management.md) - 40 minutes
 

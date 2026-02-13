@@ -17,10 +17,10 @@ Questions are distributed according to the official CAPA exam weights:
 
 | Domain | Weight | Questions per Exam |
 |--------|--------|-------------------|
-| Argo CD | 35% | 21 questions (Q1-21) |
-| Argo Workflows | 25% | 15 questions (Q22-36) |
-| Argo Rollouts | 25% | 15 questions (Q37-51) |
-| Argo Events | 15% | 9 questions (Q52-60) |
+| Argo Workflows | 36% | 22 questions (Q1-22) |
+| Argo CD | 34% | 20 questions (Q23-42) |
+| Argo Rollouts | 18% | 11 questions (Q43-53) |
+| Argo Events | 12% | 7 questions (Q54-60) |
 
 ## Mock Exam Files
 
@@ -100,25 +100,25 @@ Each exam contains 60 unique questions covering all CAPA domains.
 
 After completing each mock exam, calculate your score per domain:
 
-**Argo CD (Questions 1-21):**
+**Argo Workflows (Questions 1-22):**
 
-- Score: _____ / 21 = _____%
-- Target: At least 15/21 (71%)
+- Score: _____ / 22 = _____%
+- Target: At least 15/22 (68%)
 
-**Argo Workflows (Questions 22-36):**
+**Argo CD (Questions 23-42):**
 
-- Score: _____ / 15 = _____%
-- Target: At least 11/15 (73%)
+- Score: _____ / 20 = _____%
+- Target: At least 14/20 (70%)
 
-**Argo Rollouts (Questions 37-51):**
+**Argo Rollouts (Questions 43-53):**
 
-- Score: _____ / 15 = _____%
-- Target: At least 11/15 (73%)
+- Score: _____ / 11 = _____%
+- Target: At least 8/11 (73%)
 
-**Argo Events (Questions 52-60):**
+**Argo Events (Questions 54-60):**
 
-- Score: _____ / 9 = _____%
-- Target: At least 7/9 (78%)
+- Score: _____ / 7 = _____%
+- Target: At least 5/7 (71%)
 
 If any domain is below target, prioritize studying that area.
 
@@ -255,10 +255,10 @@ If any domain is below target, prioritize studying that area.
 
 Use this table to track your progress across both mock exams:
 
-| Mock Exam | Date Taken | Score | Pass? | Argo CD | Workflows | Rollouts | Events | Time Used |
-|-----------|-----------|-------|-------|---------|-----------|----------|--------|-----------|
-| Set 1 | _____ | ___/60 | ___% | ___/21 | ___/15 | ___/15 | ___/9 | ___ min |
-| Set 2 | _____ | ___/60 | ___% | ___/21 | ___/15 | ___/15 | ___/9 | ___ min |
+| Mock Exam | Date Taken | Score | Pass? | Workflows | Argo CD | Rollouts | Events | Time Used |
+|-----------|-----------|-------|-------|-----------|---------|----------|--------|-----------|
+| Set 1 | _____ | ___/60 | ___% | ___/22 | ___/20 | ___/11 | ___/7 | ___ min |
+| Set 2 | _____ | ___/60 | ___% | ___/22 | ___/20 | ___/11 | ___/7 | ___ min |
 
 **Target:** Score 75%+ (45/60) on Set 2 with time to spare
 

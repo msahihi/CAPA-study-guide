@@ -9,548 +9,14 @@
 
 ## Domain Distribution
 
-- Argo CD: Questions 1-21 (35%)
-- Argo Workflows: Questions 22-36 (25%)
-- Argo Rollouts: Questions 37-51 (25%)
-- Argo Events: Questions 52-60 (15%)
+- Argo Workflows: Questions 1-22 (36.7%)
+- Argo CD: Questions 23-42 (33.3%)
+- Argo Rollouts: Questions 43-53 (18.3%)
+- Argo Events: Questions 54-60 (11.7%)
 
-## Section 1: Argo CD (Questions 1-21)
+## Section 1: Argo Workflows (Questions 1-22)
 
 ### Question 1
-
-What is the primary role of the Application Controller in Argo CD?
-
-A. Managing user authentication and authorization  
-B. Continuously monitoring Git repositories for changes.  
-C. Comparing desired state in Git with live state in Kubernetes  
-D. Serving the web UI and API endpoints
-
-**Correct Answer: C**
-
-<details>
-<summary>Explanation</summary>
-
-**Why C is correct:**
-The Application Controller is the core component that continuously compares the desired application state (defined in Git) with the live state in the Kubernetes cluster. It performs reconciliation loops to detect and report drift.
-
-**Why others are wrong:**
-
-- **A:** User authentication is handled by the Argo CD API Server with dex integration
-- **B:** The Repo Server monitors and interacts with Git repositories, not the Application Controller
-- **D:** The API Server serves the web UI and API endpoints
-
-</details>
-
-### Question 2
-
-Which Argo CD sync policy option will automatically sync an application when it detects drift?
-
-A. `syncPolicy.automated.prune: true`  
-B. `syncPolicy.automated.selfHeal: true`  
-C. `syncPolicy.automated.allowEmpty: true`  
-D. `syncPolicy.syncOptions: [AutoSync=true]`
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-The `selfHeal: true` option under automated sync policy will automatically sync the application when Argo CD detects that the live state has drifted from the desired state in Git, even if the Git state hasn't changed.
-
-**Why others are wrong:**
-
-- **A:** `prune: true` enables automatic deletion of resources that no longer exist in Git, but doesn't trigger syncs on drift
-- **C:** `allowEmpty: true` allows syncing when an app has no resources, not related to drift detection
-- **D:** This is not valid syntax; automated sync is enabled with `syncPolicy.automated: {}`
-
-</details>
-
-### Question 3
-
-You need to prevent Argo CD from deleting a specific Kubernetes Secret during a sync. Which annotation should you add to the Secret?
-
-A. `argocd.argoproj.io/sync-options: Delete=false`  
-B. `argocd.argoproj.io/compare-options: IgnoreDuringDeletion`  
-C. `argocd.argoproj.io/sync-options: Prune=false`  
-D. `argocd.argoproj.io/tracking-id: ignore`
-
-**Correct Answer: C**
-
-<details>
-<summary>Explanation</summary>
-
-**Why C is correct:**
-The `Prune=false` sync option annotation prevents Argo CD from deleting (pruning) a resource when it's removed from Git or no longer tracked.
-
-**Why others are wrong:**
-
-- **A:** `Delete=false` is not a valid sync option
-- **B:** `IgnoreDuringDeletion` is not a valid compare option
-- **D:** The tracking-id annotation is used for tracking resources, not preventing deletion
-
-</details>
-
-### Question 4
-
-Which command displays the difference between the desired state (Git) and live state (cluster) for an application?
-
-A. `argocd app status myapp`  
-B. `argocd app diff myapp`  
-C. `argocd app get myapp --show-params`  
-D. `argocd app sync myapp --dry-run`
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-The `argocd app diff` command shows the differences between the desired state in Git and the live state in the cluster, similar to a Git diff.
-
-**Why others are wrong:**
-
-- **A:** `app status` shows overall sync status but not detailed differences
-- **C:** `--show-params` displays parameter overrides, not state differences
-- **D:** `--dry-run` previews sync actions but in a different format than diff
-
-</details>
-
-### Question 5
-
-An Argo CD Application is stuck in "Progressing" state. What is the MOST likely cause?
-
-A. The Git repository is unreachable  
-B. A Kubernetes resource has not reached its ready state within the health check timeout  
-C. The Application manifest has incorrect YAML syntax  
-D. The sync operation was cancelled
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-"Progressing" status typically means resources have been created/updated but haven't reached a healthy/ready state yet. This is most commonly due to pods not starting, deployments not reaching ready replicas, or custom health checks timing out.
-
-**Why others are wrong:**
-
-- **A:** Git repository issues would show "ComparisonError" status, not "Progressing"
-- **C:** YAML syntax errors would prevent sync from starting, showing "SyncError"
-- **D:** Cancelled sync operations would show "Terminated" or "Failed" status
-
-</details>
-
-### Question 6
-
-What is the purpose of the `project` field in an Argo CD Application manifest?
-
-A. It specifies which Git project contains the application manifests  
-B. It references an AppProject that defines RBAC and access restrictions  
-C. It identifies the Kubernetes namespace where the application will be deployed  
-D. It groups applications for organizational purposes only
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-The `project` field references an Argo CD AppProject resource, which provides multi-tenancy by restricting what Git repos can be used, which clusters can be deployed to, which namespaces/resources are allowed, and defining RBAC policies.
-
-**Why others are wrong:**
-
-- **A:** The Git repository is specified in the `source.repoURL` field
-- **C:** The target namespace is specified in `destination.namespace`
-- **D:** While projects do provide organization, their primary purpose is security and access control
-
-</details>
-
-### Question 7
-
-Which sync option allows you to skip schema validation when applying manifests?
-
-A. `Validate=false`  
-B. `SkipSchemaValidation`  
-C. `ServerSideApply=true`  
-D. `ApplyOutOfSyncOnly=true`
-
-**Correct Answer: A**
-
-<details>
-<summary>Explanation</summary>
-
-**Why A is correct:**
-The `Validate=false` sync option disables schema validation during sync, which can be useful for custom resources or when working with experimental API versions.
-
-**Why others are wrong:**
-
-- **B:** `SkipSchemaValidation` is not a valid sync option name
-- **C:** `ServerSideApply=true` enables server-side apply but doesn't skip validation
-- **D:** `ApplyOutOfSyncOnly=true` only syncs resources that are out of sync, doesn't affect validation
-
-</details>
-
-### Question 8
-
-You want to deploy to multiple clusters from a single Git repository. What is the BEST approach?
-
-A. Create multiple Argo CD instances, one per cluster  
-B. Use Argo CD ApplicationSets with cluster generators  
-C. Create separate Git repositories for each cluster  
-D. Use Helm with different values files and manual syncs
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-ApplicationSets are designed specifically for managing multiple applications across multiple clusters from a single source. The cluster generator can automatically create applications for each registered cluster.
-
-**Why others are wrong:**
-
-- **A:** Multiple Argo CD instances creates unnecessary complexity and duplication
-- **C:** Separate repositories defeat the purpose of single-source-of-truth and increase maintenance
-- **D:** While Helm helps with configuration, manual syncs don't scale well and lack automation
-
-</details>
-
-### Question 9
-
-What does the following Argo CD health assessment indicate?
-
-```yaml
-status:
-  health:
-    status: Degraded
-    message: "Pod myapp-7d4f5b6c8-xyz is CrashLoopBackOff"
-```
-
-A. The application sync failed  
-B. The application is partially available but has issues  
-C. The Git repository is out of sync  
-D. The application was pruned
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-"Degraded" status means the application is partially running but has health issues. Some pods may be running while others are failing, making the application available but not fully healthy.
-
-**Why others are wrong:**
-
-- **A:** Sync failures are separate from health status and would show in sync status
-- **C:** Git sync status is separate from health status
-- **D:** Pruned resources affect sync status, not health status
-
-</details>
-
-### Question 10
-
-Which Argo CD component is responsible for generating Kubernetes manifests from Helm charts, Kustomize, or Jsonnet?
-
-A. Application Controller  
-B. API Server  
-C. Repo Server  
-D. Redis Cache
-
-**Correct Answer: C**
-
-<details>
-<summary>Explanation</summary>
-
-**Why C is correct:**
-The Repo Server is responsible for cloning Git repositories and generating Kubernetes manifests from various tools like Helm, Kustomize, Jsonnet, or plain YAML. It acts as an internal service that abstracts the details of manifest generation.
-
-**Why others are wrong:**
-
-- **A:** The Application Controller compares and reconciles state but doesn't generate manifests
-- **B:** The API Server provides the UI and API but doesn't generate manifests
-- **D:** Redis is used for caching but not for manifest generation
-
-</details>
-
-### Question 11
-
-You need to exclude certain files from being processed by Argo CD. Which Application field should you configure?
-
-A. `source.path` with negation patterns  
-B. `source.directory.exclude`  
-C. `spec.ignoreDifferences`  
-D. `spec.ignoreFiles`
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-The `source.directory.exclude` field allows you to specify glob patterns for files/directories to exclude from application manifests when using plain directory sources.
-
-**Why others are wrong:**
-
-- **A:** `source.path` specifies what to include, not what to exclude
-- **C:** `ignoreDifferences` ignores differences during comparison but doesn't exclude files
-- **D:** `ignoreFiles` is not a valid field in the Application spec
-
-</details>
-
-### Question 12
-
-What is the purpose of the `argocd app wait` command?
-
-A. To pause an application sync operation  
-B. To wait for an application to reach a synced and healthy state  
-C. To delay sync by a specified time period  
-D. To wait for user confirmation before syncing
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-`argocd app wait` blocks until the application reaches the desired state (synced and healthy), making it useful in CI/CD pipelines or scripts where you need to wait for deployment completion.
-
-**Why others are wrong:**
-
-- **A:** There's no command to pause an ongoing sync
-- **C:** It waits for conditions, not a time duration
-- **D:** Manual confirmation is handled through sync options, not the wait command
-
-</details>
-
-### Question 13
-
-Which AppProject configuration restricts an application to only deploy to specific namespaces?
-
-A. `spec.sourceRepos`  
-B. `spec.destinations`  
-C. `spec.clusterResourceWhitelist`  
-D. `spec.namespaceResourceBlacklist`
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-`spec.destinations` in an AppProject defines which clusters and namespaces applications in that project can deploy to, providing namespace-level restrictions.
-
-**Why others are wrong:**
-
-- **A:** `sourceRepos` restricts which Git repositories can be used, not target namespaces
-- **C:** `clusterResourceWhitelist` controls which cluster-scoped resources are allowed, not namespaces
-- **D:** `namespaceResourceBlacklist` blocks specific resource types within namespaces but doesn't restrict which namespaces can be used
-
-</details>
-
-### Question 14
-
-You want to use a private Git repository with SSH authentication. What should you configure in Argo CD?
-
-A. Create a Secret with SSH private key and register it as a repository credential  
-B. Store the SSH key in the Application manifest under `source.sshKey`  
-C. Configure the SSH key in the argocd-cm ConfigMap  
-D. Use HTTPS with a token instead; SSH is not supported
-
-**Correct Answer: A**
-
-<details>
-<summary>Explanation</summary>
-
-**Why A is correct:**
-Private repositories require credentials registered in Argo CD. For SSH, you create a Secret with the private key and register it using `argocd repo add` or through the UI. The credentials are stored in the argocd-repo-server Secret.
-
-**Why others are wrong:**
-
-- **B:** Application manifests don't contain credentials; they reference repositories
-- **C:** The argocd-cm ConfigMap is for general settings, not credentials
-- **D:** SSH is fully supported and often preferred for Git authentication
-
-</details>
-
-### Question 15
-
-What does the `RespectIgnoreDifferences` sync option do?
-
-A. Ignores all differences between Git and live state  
-B. Applies the ignoreDifferences settings during a sync operation  
-C. Prevents sync when differences are detected  
-D. Ignores deletion of resources
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-`RespectIgnoreDifferences` makes the sync operation honor the `ignoreDifferences` configuration, so fields marked as ignored won't be overwritten during sync even if they differ.
-
-**Why others are wrong:**
-
-- **A:** It only ignores specifically configured differences, not all differences
-- **C:** It allows sync to proceed while ignoring certain fields, not preventing sync
-- **D:** Resource deletion is controlled by prune settings, not ignore differences
-
-</details>
-
-### Question 16
-
-Which command shows all applications managed by Argo CD across all projects?
-
-A. `argocd app list`  
-B. `argocd app get --all`  
-C. `kubectl get applications -n argocd`  
-D. Both A and C
-
-**Correct Answer:** D
-
-<details>
-<summary>Explanation</summary>
-
-**Why D is correct:**
-Both commands show all applications: `argocd app list` uses the Argo CD API and provides formatted output, while `kubectl get applications -n argocd` directly queries the Application CRDs in the Kubernetes API.
-
-**Why others are wrong:**
-
-- **A:** This is correct but incomplete as an answer
-- **B:** `--all` is not a valid flag for `argocd app get`
-- **C:** This is correct but incomplete as an answer
-
-</details>
-
-### Question 17
-
-An application uses Kustomize with multiple overlays. How do you specify which overlay to use?
-
-A. Set `source.kustomize.overlay` to the overlay directory name  
-B. Set `source.path` to point to the overlay directory  
-C. Use `source.targetRevision` to specify the overlay  
-D. Configure overlays in the AppProject
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-With Kustomize, you specify the overlay by setting `source.path` to point to the specific overlay directory (e.g., `overlays/production`). Argo CD will automatically detect and run Kustomize build.
-
-**Why others are wrong:**
-
-- **A:** There is no `source.kustomize.overlay` field
-- **C:** `targetRevision` specifies the Git branch/tag/commit, not the overlay
-- **D:** AppProjects control access and restrictions, not overlay selection
-
-</details>
-
-### Question 18
-
-What is the purpose of the `argocd.argoproj.io/sync-wave` annotation?
-
-A. To control the order in which resources are synced  
-B. To group resources for batch operations  
-C. To specify how many sync attempts should be made  
-D. To define sync frequency for automated sync
-
-**Correct Answer: A**
-
-<details>
-<summary>Explanation</summary>
-
-**Why A is correct:**
-The `sync-wave` annotation controls the order of resource creation during sync. Resources are applied in increasing wave order (e.g., wave 0 before wave 1), allowing you to ensure dependencies are created first.
-
-**Why others are wrong:**
-
-- **B:** While waves do group resources, the primary purpose is ordering, not just grouping
-- **C:** Sync retry attempts are controlled by sync policy, not annotations
-- **D:** Sync frequency is controlled by the reconciliation timeout setting, not annotations
-
-</details>
-
-### Question 19
-
-Which Argo CD feature allows you to test changes before syncing to production?
-
-A. Sync Preview  
-B. Diff View  
-C. Dry Run  
-D. All of the above
-
-**Correct Answer:** D
-
-<details>
-<summary>Explanation</summary>
-
-**Why D is correct:**
-All three features help test changes:
-
-- **Sync Preview:** Shows what will be created/updated/deleted
-- **Diff View:** Shows exact differences between desired and live state
-- **Dry Run:** Simulates sync without actually applying changes
-
-**Why others are wrong:**
-Each individual option is correct but incomplete since all three can be used for testing.
-</details>
-
-### Question 20
-
-You need to deploy an application to a namespace that doesn't exist yet. What should you configure?
-
-A. Create the namespace manually before syncing  
-B. Add `CreateNamespace=true` to sync options  
-C. Set `destination.createNamespace: true`  
-D. Include a Namespace manifest in your Git repository
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-The `CreateNamespace=true` sync option tells Argo CD to automatically create the destination namespace if it doesn't exist during sync.
-
-**Why others are wrong:**
-
-- **A:** This works but requires manual intervention and doesn't scale
-- **C:** `destination.createNamespace` is not a valid field
-- **D:** This works but adds unnecessary manifest management; sync options are cleaner
-
-</details>
-
-### Question 21
-
-What does OutOfSync status mean for an Argo CD Application?
-
-A. The sync operation failed  
-B. The desired state in Git differs from the live state in the cluster  
-C. The application is not healthy  
-D. The Git repository is unreachable
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-OutOfSync status means Argo CD has detected differences between what's defined in Git (desired state) and what's running in the cluster (live state). This doesn't necessarily mean there's a problem, just that they differ.
-
-**Why others are wrong:**
-
-- **A:** Failed syncs show "SyncFailed" status, not OutOfSync
-- **C:** Health status is separate from sync status
-- **D:** Git repository issues show "ComparisonError" status
-
-</details>
-
-## Section 2: Argo Workflows (Questions 22-36)
-
-### Question 22
 
 What is the main purpose of Argo Workflows?
 
@@ -575,7 +41,7 @@ Argo Workflows is a container-native workflow engine for orchestrating parallel 
 
 </details>
 
-### Question 23
+### Question 2
 
 Which Workflow template type allows you to define parallel execution with dependencies?
 
@@ -600,7 +66,7 @@ DAG (Directed Acyclic Graph) templates allow you to define tasks with explicit d
 
 </details>
 
-### Question 24
+### Question 3
 
 What is the purpose of the `retryStrategy` field in a Workflow template?
 
@@ -625,7 +91,7 @@ D. To implement exponential backoff for API calls
 
 </details>
 
-### Question 25
+### Question 4
 
 Which command submits a Workflow from a YAML file?
 
@@ -650,7 +116,7 @@ D. `kubectl apply -f workflow.yaml`
 
 </details>
 
-### Question 26
+### Question 5
 
 What does the following Workflow specification do?
 
@@ -689,7 +155,7 @@ In steps templates, each list item (marked with `-`) represents a sequential ste
 
 </details>
 
-### Question 27
+### Question 6
 
 Which artifact repository is NOT natively supported by Argo Workflows?
 
@@ -712,7 +178,7 @@ Argo Workflows natively supports S3, GCS, Azure Blob Storage, and Git repositori
 
 </details>
 
-### Question 28
+### Question 7
 
 What is the purpose of the `when` expression in a Workflow?
 
@@ -737,7 +203,7 @@ The `when` expression allows conditional execution of steps or tasks based on pa
 
 </details>
 
-### Question 29
+### Question 8
 
 Which Workflow field limits the total execution time?
 
@@ -762,7 +228,7 @@ D. `spec.ttlStrategy.secondsAfterCompletion`
 
 </details>
 
-### Question 30
+### Question 9
 
 What is a WorkflowTemplate?
 
@@ -787,7 +253,7 @@ WorkflowTemplate is a cluster-scoped or namespaced resource that defines a reusa
 
 </details>
 
-### Question 31
+### Question 10
 
 How do you pass the output of one step as input to another step?
 
@@ -812,7 +278,7 @@ Argo Workflows provides variable substitution syntax to access outputs from prev
 
 </details>
 
-### Question 32
+### Question 11
 
 Which template type suspends workflow execution until manually resumed?
 
@@ -837,7 +303,7 @@ The Suspend template type pauses workflow execution until manually resumed using
 
 </details>
 
-### Question 33
+### Question 12
 
 What is the purpose of input and output parameters in Workflow templates?
 
@@ -862,7 +328,7 @@ Input parameters allow passing data into templates, and output parameters allow 
 
 </details>
 
-### Question 34
+### Question 13
 
 Which command shows the logs for a specific workflow?
 
@@ -887,7 +353,7 @@ D. `argo get workflow-name --logs`
 
 </details>
 
-### Question 35
+### Question 14
 
 What does the `parallelism` field control in a Workflow?
 
@@ -912,7 +378,7 @@ D. The number of steps that can run in parallel
 
 </details>
 
-### Question 36
+### Question 15
 
 What is a CronWorkflow?
 
@@ -937,16 +403,14 @@ CronWorkflow is a resource that creates workflows on a cron schedule, similar to
 
 </details>
 
-## Section 3: Argo Rollouts (Questions 37-51)
+### Question 16
 
-### Question 37
+What does the `RespectIgnoreDifferences` sync option do?
 
-What is the primary purpose of Argo Rollouts?
-
-A. To automate Kubernetes cluster updates  
-B. To provide progressive delivery strategies like blue-green and canary deployments  
-C. To roll back failed deployments automatically  
-D. To manage workflow execution
+A. Ignores all differences between Git and live state  
+B. Applies the ignoreDifferences settings during a sync operation  
+C. Prevents sync when differences are detected  
+D. Ignores deletion of resources
 
 **Correct Answer: B**
 
@@ -954,98 +418,98 @@ D. To manage workflow execution
 <summary>Explanation</summary>
 
 **Why B is correct:**
-Argo Rollouts is a Kubernetes controller that provides advanced deployment strategies (blue-green, canary) with fine-grained control, automated progressive delivery, and integration with service meshes and ingress controllers.
+`RespectIgnoreDifferences` makes the sync operation honor the `ignoreDifferences` configuration, so fields marked as ignored won't be overwritten during sync even if they differ.
 
 **Why others are wrong:**
 
-- **A:** Cluster updates are separate from application deployments
-- **C:** While rollback is a feature, progressive delivery is the primary purpose
-- **D:** Workflow execution is Argo Workflows' domain
+- **A:** It only ignores specifically configured differences, not all differences
+- **C:** It allows sync to proceed while ignoring certain fields, not preventing sync
+- **D:** Resource deletion is controlled by prune settings, not ignore differences
 
 </details>
 
-### Question 38
+### Question 17
 
-In a canary deployment, what does the `setWeight` step do?
+Which command shows all applications managed by Argo CD across all projects?
 
-A. Sets the percentage of traffic routed to the canary version  
-B. Sets the number of replicas in the canary  
-C. Sets the priority of the canary pods  
-D. Sets the resource limits for canary pods
-
-**Correct Answer: A**
-
-<details>
-<summary>Explanation</summary>
-
-**Why A is correct:**
-`setWeight` in a canary strategy specifies what percentage of traffic should be routed to the new (canary) version. This requires integration with a traffic manager like Istio, Nginx, or ALB.
-
-**Why others are wrong:**
-
-- **B:** Replica count is controlled separately by the strategy
-- **C:** Pod priority is a Kubernetes concept, not related to setWeight
-- **D:** Resource limits are defined in pod specs, not rollout strategy
-
-</details>
-
-### Question 39
-
-Which command promotes a paused Rollout to full deployment?
-
-A. `kubectl argo rollouts promote rollout-name`  
-B. `kubectl rollout promote rollout-name`  
-C. `kubectl argo rollouts continue rollout-name`  
+A. `argocd app list`  
+B. `argocd app get --all`  
+C. `kubectl get applications -n argocd`  
 D. Both A and C
 
+**Correct Answer:** D
+
+<details>
+<summary>Explanation</summary>
+
+**Why D is correct:**
+Both commands show all applications: `argocd app list` uses the Argo CD API and provides formatted output, while `kubectl get applications -n argocd` directly queries the Application CRDs in the Kubernetes API.
+
+**Why others are wrong:**
+
+- **A:** This is correct but incomplete as an answer
+- **B:** `--all` is not a valid flag for `argocd app get`
+- **C:** This is correct but incomplete as an answer
+
+</details>
+
+### Question 18
+
+An application uses Kustomize with multiple overlays. How do you specify which overlay to use?
+
+A. Set `source.kustomize.overlay` to the overlay directory name  
+B. Set `source.path` to point to the overlay directory  
+C. Use `source.targetRevision` to specify the overlay  
+D. Configure overlays in the AppProject
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+With Kustomize, you specify the overlay by setting `source.path` to point to the specific overlay directory (e.g., `overlays/production`). Argo CD will automatically detect and run Kustomize build.
+
+**Why others are wrong:**
+
+- **A:** There is no `source.kustomize.overlay` field
+- **C:** `targetRevision` specifies the Git branch/tag/commit, not the overlay
+- **D:** AppProjects control access and restrictions, not overlay selection
+
+</details>
+
+### Question 19
+
+What is the purpose of the `argocd.argoproj.io/sync-wave` annotation?
+
+A. To control the order in which resources are synced  
+B. To group resources for batch operations  
+C. To specify how many sync attempts should be made  
+D. To define sync frequency for automated sync
+
 **Correct Answer: A**
 
 <details>
 <summary>Explanation</summary>
 
 **Why A is correct:**
-The `kubectl argo rollouts promote` command (or `argo rollouts promote`) immediately promotes a paused rollout to the next step or fully promotes it, skipping remaining steps.
+The `sync-wave` annotation controls the order of resource creation during sync. Resources are applied in increasing wave order (e.g., wave 0 before wave 1), allowing you to ensure dependencies are created first.
 
 **Why others are wrong:**
 
-- **B:** This mixes standard kubectl rollout with Argo Rollouts commands incorrectly
-- **C:** There is no `continue` command in Argo Rollouts
-- **D:** C is incorrect, so this is wrong
+- **B:** While waves do group resources, the primary purpose is ordering, not just grouping
+- **C:** Sync retry attempts are controlled by sync policy, not annotations
+- **D:** Sync frequency is controlled by the reconciliation timeout setting, not annotations
 
 </details>
 
-### Question 40
+### Question 20
 
-What is the purpose of the `activeService` and `previewService` in a blue-green deployment?
+Which Argo CD feature allows you to test changes before syncing to production?
 
-A. activeService routes to current version, previewService routes to new version  
-B. Both route to all versions for load balancing  
-C. activeService is for production, previewService is for testing  
-D. They are optional and only used for monitoring
-
-**Correct Answer: A**
-
-<details>
-<summary>Explanation</summary>
-
-**Why A is correct:**
-In blue-green deployments, `activeService` always points to the currently active (stable) version, while `previewService` points to the new version being validated. After promotion, the services switch.
-
-**Why others are wrong:**
-
-- **B:** They route to specific versions, not all versions
-- **C:** While preview is often used for testing, the technical function is version routing
-- **D:** They are required for blue-green strategy to function
-
-</details>
-
-### Question 41
-
-Which analysis template metric provider can be used for custom metrics?
-
-A. Prometheus  
-B. Datadog  
-C. Web (HTTP/HTTPS requests)  
+A. Sync Preview  
+B. Diff View  
+C. Dry Run  
 D. All of the above
 
 **Correct Answer:** D
@@ -1054,20 +518,76 @@ D. All of the above
 <summary>Explanation</summary>
 
 **Why D is correct:**
-Argo Rollouts supports multiple metric providers for analysis: Prometheus, Datadog, New Relic, Wavefront, Cloudwatch, Web (for custom HTTP endpoints), Job (Kubernetes Jobs), and Kayenta (Spinnaker's canary analysis service).
+All three features help test changes:
+
+- **Sync Preview:** Shows what will be created/updated/deleted
+- **Diff View:** Shows exact differences between desired and live state
+- **Dry Run:** Simulates sync without actually applying changes
 
 **Why others are wrong:**
-Each option is correct but incomplete; all are supported providers.
+Each individual option is correct but incomplete since all three can be used for testing.
 </details>
 
-### Question 42
+### Question 21
 
-What happens when an AnalysisRun fails during a canary deployment?
+You need to deploy an application to a namespace that doesn't exist yet. What should you configure?
 
-A. The rollout continues automatically  
-B. The rollout is paused for manual intervention  
-C. The rollout is automatically aborted and rolled back  
-D. The analysis is ignored
+A. Create the namespace manually before syncing  
+B. Add `CreateNamespace=true` to sync options  
+C. Set `destination.createNamespace: true`  
+D. Include a Namespace manifest in your Git repository
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+The `CreateNamespace=true` sync option tells Argo CD to automatically create the destination namespace if it doesn't exist during sync.
+
+**Why others are wrong:**
+
+- **A:** This works but requires manual intervention and doesn't scale
+- **C:** `destination.createNamespace` is not a valid field
+- **D:** This works but adds unnecessary manifest management; sync options are cleaner
+
+</details>
+
+### Question 22
+
+What does OutOfSync status mean for an Argo CD Application?
+
+A. The sync operation failed  
+B. The desired state in Git differs from the live state in the cluster  
+C. The application is not healthy  
+D. The Git repository is unreachable
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+OutOfSync status means Argo CD has detected differences between what's defined in Git (desired state) and what's running in the cluster (live state). This doesn't necessarily mean there's a problem, just that they differ.
+
+**Why others are wrong:**
+
+- **A:** Failed syncs show "SyncFailed" status, not OutOfSync
+- **C:** Health status is separate from sync status
+- **D:** Git repository issues show "ComparisonError" status
+
+</details>
+
+## Section 2: Argo CD (Questions 23-42)
+
+### Question 23
+
+What is the primary role of the Application Controller in Argo CD?
+
+A. Managing user authentication and authorization  
+B. Continuously monitoring Git repositories for changes.  
+C. Comparing desired state in Git with live state in Kubernetes  
+D. Serving the web UI and API endpoints
 
 **Correct Answer: C**
 
@@ -1075,24 +595,24 @@ D. The analysis is ignored
 <summary>Explanation</summary>
 
 **Why C is correct:**
-By default, when an AnalysisRun fails (metrics indicate the new version is problematic), the rollout is automatically aborted and the Rollout returns to the previous stable version, protecting production.
+The Application Controller is the core component that continuously compares the desired application state (defined in Git) with the live state in the Kubernetes cluster. It performs reconciliation loops to detect and report drift.
 
 **Why others are wrong:**
 
-- **A:** Failed analysis prevents promotion to protect against bad deployments
-- **B:** The default behavior is automatic abort, though you can configure pause on inconclusive results
-- **D:** Analysis results are critical decision points for progressive delivery
+- **A:** User authentication is handled by the Argo CD API Server with dex integration
+- **B:** The Repo Server monitors and interacts with Git repositories, not the Application Controller
+- **D:** The API Server serves the web UI and API endpoints
 
 </details>
 
-### Question 43
+### Question 24
 
-What does the `autoPromotionEnabled: false` field do in a Rollout strategy?
+Which Argo CD sync policy option will automatically sync an application when it detects drift?
 
-A. Disables automatic rollback on failure  
-B. Requires manual promotion between canary steps  
-C. Disables analysis runs  
-D. Prevents the rollout from starting
+A. `syncPolicy.automated.prune: true`  
+B. `syncPolicy.automated.selfHeal: true`  
+C. `syncPolicy.automated.allowEmpty: true`  
+D. `syncPolicy.syncOptions: [AutoSync=true]`
 
 **Correct Answer: B**
 
@@ -1100,24 +620,381 @@ D. Prevents the rollout from starting
 <summary>Explanation</summary>
 
 **Why B is correct:**
-When `autoPromotionEnabled` is false, the rollout will pause at the first step and require manual promotion (via CLI or API) to proceed. This is useful for requiring human approval before proceeding.
+The `selfHeal: true` option under automated sync policy will automatically sync the application when Argo CD detects that the live state has drifted from the desired state in Git, even if the Git state hasn't changed.
 
 **Why others are wrong:**
 
-- **A:** Rollback behavior is separate from promotion settings
-- **C:** Analysis runs are controlled by analysis configuration, not autoPromotion
-- **D:** The rollout starts but pauses at the first step
+- **A:** `prune: true` enables automatic deletion of resources that no longer exist in Git, but doesn't trigger syncs on drift
+- **C:** `allowEmpty: true` allows syncing when an app has no resources, not related to drift detection
+- **D:** This is not valid syntax; automated sync is enabled with `syncPolicy.automated: {}`
 
 </details>
 
-### Question 44
+### Question 25
 
-Which Rollout strategy is BEST when you want to test a new version with a small amount of traffic before full rollout?
+You need to prevent Argo CD from deleting a specific Kubernetes Secret during a sync. Which annotation should you add to the Secret?
 
-A. Blue-Green  
-B. Canary  
+A. `argocd.argoproj.io/sync-options: Delete=false`  
+B. `argocd.argoproj.io/compare-options: IgnoreDuringDeletion`  
+C. `argocd.argoproj.io/sync-options: Prune=false`  
+D. `argocd.argoproj.io/tracking-id: ignore`
+
+**Correct Answer: C**
+
+<details>
+<summary>Explanation</summary>
+
+**Why C is correct:**
+The `Prune=false` sync option annotation prevents Argo CD from deleting (pruning) a resource when it's removed from Git or no longer tracked.
+
+**Why others are wrong:**
+
+- **A:** `Delete=false` is not a valid sync option
+- **B:** `IgnoreDuringDeletion` is not a valid compare option
+- **D:** The tracking-id annotation is used for tracking resources, not preventing deletion
+
+</details>
+
+### Question 26
+
+Which command displays the difference between the desired state (Git) and live state (cluster) for an application?
+
+A. `argocd app status myapp`  
+B. `argocd app diff myapp`  
+C. `argocd app get myapp --show-params`  
+D. `argocd app sync myapp --dry-run`
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+The `argocd app diff` command shows the differences between the desired state in Git and the live state in the cluster, similar to a Git diff.
+
+**Why others are wrong:**
+
+- **A:** `app status` shows overall sync status but not detailed differences
+- **C:** `--show-params` displays parameter overrides, not state differences
+- **D:** `--dry-run` previews sync actions but in a different format than diff
+
+</details>
+
+### Question 27
+
+An Argo CD Application is stuck in "Progressing" state. What is the MOST likely cause?
+
+A. The Git repository is unreachable  
+B. A Kubernetes resource has not reached its ready state within the health check timeout  
+C. The Application manifest has incorrect YAML syntax  
+D. The sync operation was cancelled
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+"Progressing" status typically means resources have been created/updated but haven't reached a healthy/ready state yet. This is most commonly due to pods not starting, deployments not reaching ready replicas, or custom health checks timing out.
+
+**Why others are wrong:**
+
+- **A:** Git repository issues would show "ComparisonError" status, not "Progressing"
+- **C:** YAML syntax errors would prevent sync from starting, showing "SyncError"
+- **D:** Cancelled sync operations would show "Terminated" or "Failed" status
+
+</details>
+
+### Question 28
+
+What is the purpose of the `project` field in an Argo CD Application manifest?
+
+A. It specifies which Git project contains the application manifests  
+B. It references an AppProject that defines RBAC and access restrictions  
+C. It identifies the Kubernetes namespace where the application will be deployed  
+D. It groups applications for organizational purposes only
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+The `project` field references an Argo CD AppProject resource, which provides multi-tenancy by restricting what Git repos can be used, which clusters can be deployed to, which namespaces/resources are allowed, and defining RBAC policies.
+
+**Why others are wrong:**
+
+- **A:** The Git repository is specified in the `source.repoURL` field
+- **C:** The target namespace is specified in `destination.namespace`
+- **D:** While projects do provide organization, their primary purpose is security and access control
+
+</details>
+
+### Question 29
+
+Which sync option allows you to skip schema validation when applying manifests?
+
+A. `Validate=false`  
+B. `SkipSchemaValidation`  
+C. `ServerSideApply=true`  
+D. `ApplyOutOfSyncOnly=true`
+
+**Correct Answer: A**
+
+<details>
+<summary>Explanation</summary>
+
+**Why A is correct:**
+The `Validate=false` sync option disables schema validation during sync, which can be useful for custom resources or when working with experimental API versions.
+
+**Why others are wrong:**
+
+- **B:** `SkipSchemaValidation` is not a valid sync option name
+- **C:** `ServerSideApply=true` enables server-side apply but doesn't skip validation
+- **D:** `ApplyOutOfSyncOnly=true` only syncs resources that are out of sync, doesn't affect validation
+
+</details>
+
+### Question 30
+
+You want to deploy to multiple clusters from a single Git repository. What is the BEST approach?
+
+A. Create multiple Argo CD instances, one per cluster  
+B. Use Argo CD ApplicationSets with cluster generators  
+C. Create separate Git repositories for each cluster  
+D. Use Helm with different values files and manual syncs
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+ApplicationSets are designed specifically for managing multiple applications across multiple clusters from a single source. The cluster generator can automatically create applications for each registered cluster.
+
+**Why others are wrong:**
+
+- **A:** Multiple Argo CD instances creates unnecessary complexity and duplication
+- **C:** Separate repositories defeat the purpose of single-source-of-truth and increase maintenance
+- **D:** While Helm helps with configuration, manual syncs don't scale well and lack automation
+
+</details>
+
+### Question 31
+
+What does the following Argo CD health assessment indicate?
+
+```yaml
+status:
+  health:
+    status: Degraded
+    message: "Pod myapp-7d4f5b6c8-xyz is CrashLoopBackOff"
+```
+
+A. The application sync failed  
+B. The application is partially available but has issues  
+C. The Git repository is out of sync  
+D. The application was pruned
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+"Degraded" status means the application is partially running but has health issues. Some pods may be running while others are failing, making the application available but not fully healthy.
+
+**Why others are wrong:**
+
+- **A:** Sync failures are separate from health status and would show in sync status
+- **C:** Git sync status is separate from health status
+- **D:** Pruned resources affect sync status, not health status
+
+</details>
+
+### Question 32
+
+Which Argo CD component is responsible for generating Kubernetes manifests from Helm charts, Kustomize, or Jsonnet?
+
+A. Application Controller  
+B. API Server  
+C. Repo Server  
+D. Redis Cache
+
+**Correct Answer: C**
+
+<details>
+<summary>Explanation</summary>
+
+**Why C is correct:**
+The Repo Server is responsible for cloning Git repositories and generating Kubernetes manifests from various tools like Helm, Kustomize, Jsonnet, or plain YAML. It acts as an internal service that abstracts the details of manifest generation.
+
+**Why others are wrong:**
+
+- **A:** The Application Controller compares and reconciles state but doesn't generate manifests
+- **B:** The API Server provides the UI and API but doesn't generate manifests
+- **D:** Redis is used for caching but not for manifest generation
+
+</details>
+
+### Question 33
+
+You need to exclude certain files from being processed by Argo CD. Which Application field should you configure?
+
+A. `source.path` with negation patterns  
+B. `source.directory.exclude`  
+C. `spec.ignoreDifferences`  
+D. `spec.ignoreFiles`
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+The `source.directory.exclude` field allows you to specify glob patterns for files/directories to exclude from application manifests when using plain directory sources.
+
+**Why others are wrong:**
+
+- **A:** `source.path` specifies what to include, not what to exclude
+- **C:** `ignoreDifferences` ignores differences during comparison but doesn't exclude files
+- **D:** `ignoreFiles` is not a valid field in the Application spec
+
+</details>
+
+### Question 34
+
+What is the purpose of the `argocd app wait` command?
+
+A. To pause an application sync operation  
+B. To wait for an application to reach a synced and healthy state  
+C. To delay sync by a specified time period  
+D. To wait for user confirmation before syncing
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+`argocd app wait` blocks until the application reaches the desired state (synced and healthy), making it useful in CI/CD pipelines or scripts where you need to wait for deployment completion.
+
+**Why others are wrong:**
+
+- **A:** There's no command to pause an ongoing sync
+- **C:** It waits for conditions, not a time duration
+- **D:** Manual confirmation is handled through sync options, not the wait command
+
+</details>
+
+### Question 35
+
+Which AppProject configuration restricts an application to only deploy to specific namespaces?
+
+A. `spec.sourceRepos`  
+B. `spec.destinations`  
+C. `spec.clusterResourceWhitelist`  
+D. `spec.namespaceResourceBlacklist`
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+`spec.destinations` in an AppProject defines which clusters and namespaces applications in that project can deploy to, providing namespace-level restrictions.
+
+**Why others are wrong:**
+
+- **A:** `sourceRepos` restricts which Git repositories can be used, not target namespaces
+- **C:** `clusterResourceWhitelist` controls which cluster-scoped resources are allowed, not namespaces
+- **D:** `namespaceResourceBlacklist` blocks specific resource types within namespaces but doesn't restrict which namespaces can be used
+
+</details>
+
+### Question 36
+
+You want to use a private Git repository with SSH authentication. What should you configure in Argo CD?
+
+A. Create a Secret with SSH private key and register it as a repository credential  
+B. Store the SSH key in the Application manifest under `source.sshKey`  
+C. Configure the SSH key in the argocd-cm ConfigMap  
+D. Use HTTPS with a token instead; SSH is not supported
+
+**Correct Answer: A**
+
+<details>
+<summary>Explanation</summary>
+
+**Why A is correct:**
+Private repositories require credentials registered in Argo CD. For SSH, you create a Secret with the private key and register it using `argocd repo add` or through the UI. The credentials are stored in the argocd-repo-server Secret.
+
+**Why others are wrong:**
+
+- **B:** Application manifests don't contain credentials; they reference repositories
+- **C:** The argocd-cm ConfigMap is for general settings, not credentials
+- **D:** SSH is fully supported and often preferred for Git authentication
+
+</details>
+
+### Question 37
+
+Which command shows the current status and history of a Rollout?
+
+A. `kubectl get rollout rollout-name`  
+B. `kubectl argo rollouts get rollout rollout-name`  
+C. `kubectl describe rollout rollout-name`  
+D. `kubectl argo rollouts status rollout-name`
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+`kubectl argo rollouts get rollout <name>` (or `argo rollouts get rollout <name>`) provides detailed status including current step, traffic weight, replica counts, and revision history.
+
+**Why others are wrong:**
+
+- **A:** This shows basic resource info but not detailed rollout status
+- **C:** Describe shows events and config but not in the rollout-specific format
+- **D:** `status` is not a valid subcommand for Argo Rollouts
+
+</details>
+
+### Question 38
+
+What is an Experiment in Argo Rollouts?
+
+A. A test environment for new features  
+B. A way to run parallel ReplicaSets with different configurations for comparison  
+C. A type of analysis template  
+D. A rollback strategy
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+An Experiment is an Argo Rollouts resource that runs multiple ReplicaSets simultaneously (e.g., baseline vs candidate versions) for A/B testing or metric comparison, typically integrated with analysis.
+
+**Why others are wrong:**
+
+- **A:** While used for testing, it's a specific technical implementation, not just a test environment
+- **C:** AnalysisTemplate is a separate resource; Experiments can use analysis but aren't analysis templates
+- **D:** Rollback is a different concept; Experiments are for parallel testing
+
+</details>
+
+### Question 39
+
+Which Rollout strategy provides the fastest rollback capability?
+
+A. Canary  
+B. Blue-Green  
 C. Rolling Update  
-D. Recreate
+D. They all have the same rollback speed
 
 **Correct Answer: B**
 
@@ -1125,24 +1002,24 @@ D. Recreate
 <summary>Explanation</summary>
 
 **Why B is correct:**
-Canary deployments gradually shift traffic to the new version in controlled increments (e.g., 10%, 25%, 50%, 100%), allowing testing with real traffic before full deployment.
+Blue-green deployments maintain the old version at full scale during deployment, so rollback is instant (just switch the service back). Canary and rolling updates require scaling up the old version again.
 
 **Why others are wrong:**
 
-- **A:** Blue-green switches traffic all at once (0% to 100%)
-- **C:** Rolling update replaces pods but doesn't control traffic splitting
-- **D:** Recreate terminates all old pods before starting new ones
+- **A:** Canary requires scaling down the new version and scaling up the old
+- **C:** Rolling update requires similar scaling operations
+- **D:** Blue-green is distinctly faster for rollback
 
 </details>
 
-### Question 45
+### Question 40
 
-What is the purpose of the `scaleDownDelaySeconds` field in a blue-green strategy?
+What is the purpose of the `abortScaleDownDelaySeconds` field?
 
-A. Delays the start of deployment  
-B. Delays scaling down the old version after promotion  
-C. Sets the timeout for promotion  
-D. Delays analysis runs
+A. Delays the start of rollout abort  
+B. Delays scaling down the canary after automatic abort  
+C. Sets abort timeout  
+D. Prevents scaling operations during abort
 
 **Correct Answer: B**
 
@@ -1150,17 +1027,17 @@ D. Delays analysis runs
 <summary>Explanation</summary>
 
 **Why B is correct:**
-`scaleDownDelaySeconds` specifies how long to wait after promoting the new version before scaling down the old (preview) version. This allows time for connection draining and rollback if issues are detected immediately.
+When a rollout is aborted (e.g., due to failed analysis), `abortScaleDownDelaySeconds` specifies how long to wait before scaling down the canary/new version. This allows time for investigation and potential manual override.
 
 **Why others are wrong:**
 
-- **A:** Deployment starts immediately when the Rollout is created/updated
-- **C:** Promotion happens based on manual action or autoPromotion settings
-- **D:** Analysis timing is controlled in AnalysisTemplate configuration
+- **A:** Abort happens immediately when triggered
+- **C:** There is no abort timeout; abort is a state change
+- **D:** Scaling is what's being delayed, not prevented
 
 </details>
 
-### Question 46
+### Question 41
 
 Which field in a Rollout spec defines the traffic routing provider?
 
@@ -1185,7 +1062,7 @@ The traffic routing configuration is specified under `spec.strategy.canary.traff
 
 </details>
 
-### Question 47
+### Question 42
 
 What does the following Rollout step configuration do?
 
@@ -1218,39 +1095,16 @@ This canary strategy first routes 20% of traffic to the new version, waits 10 mi
 
 </details>
 
-### Question 48
+## Section 3: Argo Rollouts (Questions 43-53)
 
-Which command shows the current status and history of a Rollout?
+### Question 43
 
-A. `kubectl get rollout rollout-name`  
-B. `kubectl argo rollouts get rollout rollout-name`  
-C. `kubectl describe rollout rollout-name`  
-D. `kubectl argo rollouts status rollout-name`
+What is the primary purpose of Argo Rollouts?
 
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-`kubectl argo rollouts get rollout <name>` (or `argo rollouts get rollout <name>`) provides detailed status including current step, traffic weight, replica counts, and revision history.
-
-**Why others are wrong:**
-
-- **A:** This shows basic resource info but not detailed rollout status
-- **C:** Describe shows events and config but not in the rollout-specific format
-- **D:** `status` is not a valid subcommand for Argo Rollouts
-
-</details>
-
-### Question 49
-
-What is an Experiment in Argo Rollouts?
-
-A. A test environment for new features  
-B. A way to run parallel ReplicaSets with different configurations for comparison  
-C. A type of analysis template  
-D. A rollback strategy
+A. To automate Kubernetes cluster updates  
+B. To provide progressive delivery strategies like blue-green and canary deployments  
+C. To roll back failed deployments automatically  
+D. To manage workflow execution
 
 **Correct Answer: B**
 
@@ -1258,126 +1112,24 @@ D. A rollback strategy
 <summary>Explanation</summary>
 
 **Why B is correct:**
-An Experiment is an Argo Rollouts resource that runs multiple ReplicaSets simultaneously (e.g., baseline vs candidate versions) for A/B testing or metric comparison, typically integrated with analysis.
+Argo Rollouts is a Kubernetes controller that provides advanced deployment strategies (blue-green, canary) with fine-grained control, automated progressive delivery, and integration with service meshes and ingress controllers.
 
 **Why others are wrong:**
 
-- **A:** While used for testing, it's a specific technical implementation, not just a test environment
-- **C:** AnalysisTemplate is a separate resource; Experiments can use analysis but aren't analysis templates
-- **D:** Rollback is a different concept; Experiments are for parallel testing
+- **A:** Cluster updates are separate from application deployments
+- **C:** While rollback is a feature, progressive delivery is the primary purpose
+- **D:** Workflow execution is Argo Workflows' domain
 
 </details>
 
-### Question 50
+### Question 44
 
-Which Rollout strategy provides the fastest rollback capability?
+In a canary deployment, what does the `setWeight` step do?
 
-A. Canary  
-B. Blue-Green  
-C. Rolling Update  
-D. They all have the same rollback speed
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-Blue-green deployments maintain the old version at full scale during deployment, so rollback is instant (just switch the service back). Canary and rolling updates require scaling up the old version again.
-
-**Why others are wrong:**
-
-- **A:** Canary requires scaling down the new version and scaling up the old
-- **C:** Rolling update requires similar scaling operations
-- **D:** Blue-green is distinctly faster for rollback
-
-</details>
-
-### Question 51
-
-What is the purpose of the `abortScaleDownDelaySeconds` field?
-
-A. Delays the start of rollout abort  
-B. Delays scaling down the canary after automatic abort  
-C. Sets abort timeout  
-D. Prevents scaling operations during abort
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-When a rollout is aborted (e.g., due to failed analysis), `abortScaleDownDelaySeconds` specifies how long to wait before scaling down the canary/new version. This allows time for investigation and potential manual override.
-
-**Why others are wrong:**
-
-- **A:** Abort happens immediately when triggered
-- **C:** There is no abort timeout; abort is a state change
-- **D:** Scaling is what's being delayed, not prevented
-
-</details>
-
-## Section 4: Argo Events (Questions 52-60)
-
-### Question 52
-
-What is the primary purpose of Argo Events?
-
-A. To monitor Kubernetes events  
-B. To trigger workflows and other Kubernetes resources based on events from various sources  
-C. To log events to external systems  
-D. To implement event-driven microservices
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-Argo Events is an event-based dependency manager for Kubernetes. It listens to events from various sources (webhooks, S3, Kafka, etc.) and triggers actions like creating Workflows, Rollouts, or any Kubernetes resource.
-
-**Why others are wrong:**
-
-- **A:** It does use events but the purpose is triggering actions, not just monitoring
-- **C:** Logging is not the primary purpose, though events can be logged
-- **D:** While it enables event-driven patterns, it's specifically for triggering Kubernetes resources
-
-</details>
-
-### Question 53
-
-What are the two main components in Argo Events?
-
-A. EventSource and Trigger  
-B. EventSource and Sensor  
-C. Webhook and Workflow  
-D. Source and Destination
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-Argo Events uses EventSources (which define where events come from) and Sensors (which define what to do when events are received, including triggers).
-
-**Why others are wrong:**
-
-- **A:** Triggers are part of Sensors, not a top-level component
-- **C:** These are specific implementations/uses, not the core components
-- **D:** These are generic terms, not Argo Events components
-
-</details>
-
-### Question 54
-
-Which EventSource type receives events via HTTP POST requests?
-
-A. Webhook  
-B. HTTP  
-C. API  
-D. REST
+A. Sets the percentage of traffic routed to the canary version  
+B. Sets the number of replicas in the canary  
+C. Sets the priority of the canary pods  
+D. Sets the resource limits for canary pods
 
 **Correct Answer: A**
 
@@ -1385,99 +1137,74 @@ D. REST
 <summary>Explanation</summary>
 
 **Why A is correct:**
-The Webhook EventSource exposes an HTTP endpoint that receives POST requests containing event payloads, commonly used for Git webhooks, CI/CD systems, or custom integrations.
+`setWeight` in a canary strategy specifies what percentage of traffic should be routed to the new (canary) version. This requires integration with a traffic manager like Istio, Nginx, or ALB.
 
 **Why others are wrong:**
 
-- **B:** While technically HTTP-based, the component is called "Webhook"
-- **C:** "API" is not a specific EventSource type
-- **D:** "REST" is not a specific EventSource type
+- **B:** Replica count is controlled separately by the strategy
+- **C:** Pod priority is a Kubernetes concept, not related to setWeight
+- **D:** Resource limits are defined in pod specs, not rollout strategy
 
 </details>
 
-### Question 55
+### Question 45
 
-What does a Sensor do when its event dependencies are satisfied?
+Which command promotes a paused Rollout to full deployment?
 
-A. Logs the event  
-B. Executes configured triggers  
-C. Stops listening for events  
-D. Creates a new EventSource
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-When a Sensor's event dependencies are met (events received from specified EventSources), it executes its configured triggers, which can create Kubernetes resources, trigger workflows, or invoke other actions.
-
-**Why others are wrong:**
-
-- **A:** Logging may occur but execution is the primary action
-- **C:** Sensors continue listening for subsequent events
-- **D:** Sensors consume from EventSources, they don't create them
-
-</details>
-
-### Question 56
-
-Which trigger type is used to create an Argo Workflow when an event occurs?
-
-A. Workflow Trigger  
-B. Argo Workflow Trigger  
-C. K8s Resource Trigger  
-D. Custom Trigger
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-The "Argo Workflow" trigger type is specifically designed to create and submit Argo Workflows when sensor events are received.
-
-**Why others are wrong:**
-
-- **A:** The full name includes "Argo Workflow"
-- **C:** While you could use K8s Resource trigger generically, Argo Workflow trigger is specific and optimized
-- **D:** Custom triggers are for user-defined actions
-
-</details>
-
-### Question 57
-
-What is the purpose of event filters in a Sensor?
-
-A. To block malicious events  
-B. To conditionally process events based on event data  
-C. To rate limit events  
-D. To encrypt event data
-
-**Correct Answer: B**
-
-<details>
-<summary>Explanation</summary>
-
-**Why B is correct:**
-Event filters allow Sensors to conditionally process events based on the event payload content. For example, only trigger on GitHub push events to the main branch, or only process events with specific field values.
-
-**Why others are wrong:**
-
-- **A:** Security is a benefit but not the primary purpose
-- **C:** Rate limiting is a separate concern
-- **D:** Encryption is not handled by filters
-
-</details>
-
-### Question 58
-
-Which EventSource type monitors S3 bucket notifications?
-
-A. S3  
-B. AWS S3  
-C. Minio  
+A. `kubectl argo rollouts promote rollout-name`  
+B. `kubectl rollout promote rollout-name`  
+C. `kubectl argo rollouts continue rollout-name`  
 D. Both A and C
+
+**Correct Answer: A**
+
+<details>
+<summary>Explanation</summary>
+
+**Why A is correct:**
+The `kubectl argo rollouts promote` command (or `argo rollouts promote`) immediately promotes a paused rollout to the next step or fully promotes it, skipping remaining steps.
+
+**Why others are wrong:**
+
+- **B:** This mixes standard kubectl rollout with Argo Rollouts commands incorrectly
+- **C:** There is no `continue` command in Argo Rollouts
+- **D:** C is incorrect, so this is wrong
+
+</details>
+
+### Question 46
+
+What is the purpose of the `activeService` and `previewService` in a blue-green deployment?
+
+A. activeService routes to current version, previewService routes to new version  
+B. Both route to all versions for load balancing  
+C. activeService is for production, previewService is for testing  
+D. They are optional and only used for monitoring
+
+**Correct Answer: A**
+
+<details>
+<summary>Explanation</summary>
+
+**Why A is correct:**
+In blue-green deployments, `activeService` always points to the currently active (stable) version, while `previewService` points to the new version being validated. After promotion, the services switch.
+
+**Why others are wrong:**
+
+- **B:** They route to specific versions, not all versions
+- **C:** While preview is often used for testing, the technical function is version routing
+- **D:** They are required for blue-green strategy to function
+
+</details>
+
+### Question 47
+
+Which analysis template metric provider can be used for custom metrics?
+
+A. Prometheus  
+B. Datadog  
+C. Web (HTTP/HTTPS requests)  
+D. All of the above
 
 **Correct Answer:** D
 
@@ -1485,16 +1212,113 @@ D. Both A and C
 <summary>Explanation</summary>
 
 **Why D is correct:**
-Argo Events supports both "AWS SNS" (which can receive S3 notifications) and "Minio" EventSources for S3-compatible bucket notifications. The specific type depends on your storage implementation.
+Argo Rollouts supports multiple metric providers for analysis: Prometheus, Datadog, New Relic, Wavefront, Cloudwatch, Web (for custom HTTP endpoints), Job (Kubernetes Jobs), and Kayenta (Spinnaker's canary analysis service).
+
+**Why others are wrong:**
+Each option is correct but incomplete; all are supported providers.
+</details>
+
+### Question 48
+
+What happens when an AnalysisRun fails during a canary deployment?
+
+A. The rollout continues automatically  
+B. The rollout is paused for manual intervention  
+C. The rollout is automatically aborted and rolled back  
+D. The analysis is ignored
+
+**Correct Answer: C**
+
+<details>
+<summary>Explanation</summary>
+
+**Why C is correct:**
+By default, when an AnalysisRun fails (metrics indicate the new version is problematic), the rollout is automatically aborted and the Rollout returns to the previous stable version, protecting production.
 
 **Why others are wrong:**
 
-- **A, C:** Both are correct but incomplete answers
-- **B:** The EventSource type is "AWS SNS" not "AWS S3"
+- **A:** Failed analysis prevents promotion to protect against bad deployments
+- **B:** The default behavior is automatic abort, though you can configure pause on inconclusive results
+- **D:** Analysis results are critical decision points for progressive delivery
 
 </details>
 
-### Question 59
+### Question 49
+
+What does the `autoPromotionEnabled: false` field do in a Rollout strategy?
+
+A. Disables automatic rollback on failure  
+B. Requires manual promotion between canary steps  
+C. Disables analysis runs  
+D. Prevents the rollout from starting
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+When `autoPromotionEnabled` is false, the rollout will pause at the first step and require manual promotion (via CLI or API) to proceed. This is useful for requiring human approval before proceeding.
+
+**Why others are wrong:**
+
+- **A:** Rollback behavior is separate from promotion settings
+- **C:** Analysis runs are controlled by analysis configuration, not autoPromotion
+- **D:** The rollout starts but pauses at the first step
+
+</details>
+
+### Question 50
+
+Which Rollout strategy is BEST when you want to test a new version with a small amount of traffic before full rollout?
+
+A. Blue-Green  
+B. Canary  
+C. Rolling Update  
+D. Recreate
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+Canary deployments gradually shift traffic to the new version in controlled increments (e.g., 10%, 25%, 50%, 100%), allowing testing with real traffic before full deployment.
+
+**Why others are wrong:**
+
+- **A:** Blue-green switches traffic all at once (0% to 100%)
+- **C:** Rolling update replaces pods but doesn't control traffic splitting
+- **D:** Recreate terminates all old pods before starting new ones
+
+</details>
+
+### Question 51
+
+What is the purpose of the `scaleDownDelaySeconds` field in a blue-green strategy?
+
+A. Delays the start of deployment  
+B. Delays scaling down the old version after promotion  
+C. Sets the timeout for promotion  
+D. Delays analysis runs
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+`scaleDownDelaySeconds` specifies how long to wait after promoting the new version before scaling down the old (preview) version. This allows time for connection draining and rollback if issues are detected immediately.
+
+**Why others are wrong:**
+
+- **A:** Deployment starts immediately when the Rollout is created/updated
+- **C:** Promotion happens based on manual action or autoPromotion settings
+- **D:** Analysis timing is controlled in AnalysisTemplate configuration
+
+</details>
+
+### Question 52
 
 What does the following Sensor dependency configuration mean?
 
@@ -1529,7 +1353,7 @@ By default, multiple dependencies require ALL events to be received before trigg
 
 </details>
 
-### Question 60
+### Question 53
 
 Which of the following is NOT a valid EventSource type in Argo Events?
 
@@ -1551,6 +1375,182 @@ PostgreSQL is not a built-in EventSource type in Argo Events. Common sources inc
 - **A:** Kafka is a supported EventSource for streaming events
 - **B:** Redis is supported for pub/sub patterns
 - **D:** GitHub is supported for repository webhooks
+
+</details>
+
+## Section 4: Argo Events (Questions 54-60)
+
+### Question 54
+
+What is the primary purpose of Argo Events?
+
+A. To monitor Kubernetes events  
+B. To trigger workflows and other Kubernetes resources based on events from various sources  
+C. To log events to external systems  
+D. To implement event-driven microservices
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+Argo Events is an event-based dependency manager for Kubernetes. It listens to events from various sources (webhooks, S3, Kafka, etc.) and triggers actions like creating Workflows, Rollouts, or any Kubernetes resource.
+
+**Why others are wrong:**
+
+- **A:** It does use events but the purpose is triggering actions, not just monitoring
+- **C:** Logging is not the primary purpose, though events can be logged
+- **D:** While it enables event-driven patterns, it's specifically for triggering Kubernetes resources
+
+</details>
+
+### Question 55
+
+What are the two main components in Argo Events?
+
+A. EventSource and Trigger  
+B. EventSource and Sensor  
+C. Webhook and Workflow  
+D. Source and Destination
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+Argo Events uses EventSources (which define where events come from) and Sensors (which define what to do when events are received, including triggers).
+
+**Why others are wrong:**
+
+- **A:** Triggers are part of Sensors, not a top-level component
+- **C:** These are specific implementations/uses, not the core components
+- **D:** These are generic terms, not Argo Events components
+
+</details>
+
+### Question 56
+
+Which EventSource type receives events via HTTP POST requests?
+
+A. Webhook  
+B. HTTP  
+C. API  
+D. REST
+
+**Correct Answer: A**
+
+<details>
+<summary>Explanation</summary>
+
+**Why A is correct:**
+The Webhook EventSource exposes an HTTP endpoint that receives POST requests containing event payloads, commonly used for Git webhooks, CI/CD systems, or custom integrations.
+
+**Why others are wrong:**
+
+- **B:** While technically HTTP-based, the component is called "Webhook"
+- **C:** "API" is not a specific EventSource type
+- **D:** "REST" is not a specific EventSource type
+
+</details>
+
+### Question 57
+
+What does a Sensor do when its event dependencies are satisfied?
+
+A. Logs the event  
+B. Executes configured triggers  
+C. Stops listening for events  
+D. Creates a new EventSource
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+When a Sensor's event dependencies are met (events received from specified EventSources), it executes its configured triggers, which can create Kubernetes resources, trigger workflows, or invoke other actions.
+
+**Why others are wrong:**
+
+- **A:** Logging may occur but execution is the primary action
+- **C:** Sensors continue listening for subsequent events
+- **D:** Sensors consume from EventSources, they don't create them
+
+</details>
+
+### Question 58
+
+Which trigger type is used to create an Argo Workflow when an event occurs?
+
+A. Workflow Trigger  
+B. Argo Workflow Trigger  
+C. K8s Resource Trigger  
+D. Custom Trigger
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+The "Argo Workflow" trigger type is specifically designed to create and submit Argo Workflows when sensor events are received.
+
+**Why others are wrong:**
+
+- **A:** The full name includes "Argo Workflow"
+- **C:** While you could use K8s Resource trigger generically, Argo Workflow trigger is specific and optimized
+- **D:** Custom triggers are for user-defined actions
+
+</details>
+
+### Question 59
+
+What is the purpose of event filters in a Sensor?
+
+A. To block malicious events  
+B. To conditionally process events based on event data  
+C. To rate limit events  
+D. To encrypt event data
+
+**Correct Answer: B**
+
+<details>
+<summary>Explanation</summary>
+
+**Why B is correct:**
+Event filters allow Sensors to conditionally process events based on the event payload content. For example, only trigger on GitHub push events to the main branch, or only process events with specific field values.
+
+**Why others are wrong:**
+
+- **A:** Security is a benefit but not the primary purpose
+- **C:** Rate limiting is a separate concern
+- **D:** Encryption is not handled by filters
+
+</details>
+
+### Question 60
+
+Which EventSource type monitors S3 bucket notifications?
+
+A. S3  
+B. AWS S3  
+C. Minio  
+D. Both A and C
+
+**Correct Answer:** D
+
+<details>
+<summary>Explanation</summary>
+
+**Why D is correct:**
+Argo Events supports both "AWS SNS" (which can receive S3 notifications) and "Minio" EventSources for S3-compatible bucket notifications. The specific type depends on your storage implementation.
+
+**Why others are wrong:**
+
+- **A, C:** Both are correct but incomplete answers
+- **B:** The EventSource type is "AWS SNS" not "AWS S3"
 
 </details>
 

@@ -1,4 +1,4 @@
-# Argo Workflows - Workflow Engine (25%)
+# Argo Workflows - Workflow Engine (36%)
 
 Argo Workflows is a container-native workflow engine for orchestrating parallel jobs on Kubernetes. It is implemented as a Kubernetes CRD (Custom Resource Definition) and provides a powerful way to define complex workflows, manage dependencies between tasks, and handle artifacts across workflow steps.
 
@@ -6,11 +6,11 @@ Argo Workflows is a container-native workflow engine for orchestrating parallel 
 
 ### [Workflow Fundamentals](workflow-fundamentals.md)
 
-Understanding the core concepts of Argo Workflows including the Workflow CRD structure, workflow specifications, entrypoints, workflow phases, and basic workflow patterns.
+Understanding the core concepts of Argo Workflows including the Workflow CRD structure, workflow specifications, entrypoints, workflow phases, basic workflow patterns, and workflow variables deep-dive (global variables, parameter passing, conditional expressions).
 
 ### [Templates and Steps](templates-steps.md)
 
-Exploring different template types such as container, script, and resource templates, along with step templates, template invocation patterns, and managing inputs and outputs.
+Exploring different template types such as container, script, and resource templates, along with step templates, template invocation patterns, managing inputs and outputs, and retry/timeout strategies for resilient workflows.
 
 ### [DAG and Parallel Execution](dag-parallel.md)
 
@@ -28,11 +28,19 @@ Understanding CI/CD use cases for Argo Workflows, triggering workflows programma
 
 Practice these hands-on labs to reinforce your understanding:
 
+### Core Labs
+
 - [Lab 01: Installation and Basics](../../labs/02-argo-workflows/lab-01-installation-basics.md) - 20 minutes
 - [Lab 02: Templates and Steps](../../labs/02-argo-workflows/lab-02-templates-steps.md) - 30 minutes
 - [Lab 03: Building DAG Workflows](../../labs/02-argo-workflows/lab-03-dag-workflows.md) - 35 minutes
 - [Lab 04: Managing Artifacts](../../labs/02-argo-workflows/lab-04-artifacts.md) - 30 minutes
 - [Lab 05: Workflow Templates](../../labs/02-argo-workflows/lab-05-workflow-templates.md) - 45 minutes
+
+### Advanced Topics
+
+- [Workflow Artifacts](../../labs/02-argo-workflows/lab-06-artifacts-advanced.md) - Advanced artifact patterns and data sharing
+- [Workflow Cron](../../labs/02-argo-workflows/lab-07-cron-schedules.md) - Scheduled workflows with CronWorkflow
+- [Workflow Security](../../labs/02-argo-workflows/lab-08-security-rbac.md) - RBAC, ServiceAccounts, and secret management
 
 ## Study Resources
 

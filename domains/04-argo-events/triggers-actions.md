@@ -785,8 +785,159 @@ spec:
 - Triggers execute in parallel by default unless dependencies are chained
 - Log triggers are useful for debugging event flow
 
+## Common Integration Patterns
+
+### CI/CD Automation
+
+**GitHub Push to Workflow:**
+
+```yaml
+# Sensor triggering CI/CD on GitHub push
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: github-ci-sensor
+spec:
+  dependencies:
+    - name: github-push
+      eventSourceName: github
+      eventName: ci-webhook
+      filters:
+        data:
+          - path: body.ref
+            type: string
+            value:
+              - "refs/heads/main"
+  triggers:
+    - template:
+        name: ci-workflow
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: ci-build-
+              spec:
+                entrypoint: ci-pipeline
+                arguments:
+                  parameters:
+                    - name: repo-url
+                      value: "{{.Input.body.repository.clone_url}}"
+                    - name: commit-sha
+                      value: "{{.Input.body.after}}"
+```
+
+### Resource Watching
+
+**Deploy on ConfigMap Change:**
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: config-watch-sensor
+spec:
+  dependencies:
+    - name: config-change
+      eventSourceName: k8s-resources
+      eventName: configmap-updates
+      filters:
+        data:
+          - path: body.metadata.name
+            value:
+              - "app-config"
+  triggers:
+    - template:
+        name: redeploy-app
+        k8s:
+          operation: patch
+          source:
+            resource:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: my-app
+            patchStrategy: strategic
+            patch: |
+              spec:
+                template:
+                  metadata:
+                    annotations:
+                      restarted-at: "{{time.Now}}"
+```
+
+### Scheduled Operations
+
+**Nightly Backup Automation:**
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: backup-scheduler
+spec:
+  dependencies:
+    - name: nightly-trigger
+      eventSourceName: calendar
+      eventName: nightly-backup
+  triggers:
+    - template:
+        name: backup-workflow
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: backup-
+              spec:
+                entrypoint: backup-db
+```
+
+### Multi-Event Coordination
+
+**Require Multiple Approvals:**
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: approval-gate
+spec:
+  dependencies:
+    - name: manager-approval
+      eventSourceName: webhook
+      eventName: manager-webhook
+    - name: security-approval
+      eventSourceName: webhook
+      eventName: security-webhook
+  triggers:
+    - template:
+        name: deploy-production
+        conditions: "manager-approval && security-approval"
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: prod-deploy-
+```
+
+### Integration Best Practices
+
+1. **Use Filters**: Filter events at dependency level to reduce processing
+2. **Parameterize Triggers**: Extract event data into workflow parameters
+3. **Error Handling**: Configure retries and backoff for trigger actions
+4. **Security**: Use secrets for webhook validation and API credentials
+5. **Monitoring**: Enable logging to track event flow and trigger execution
+
 ## Hands-On Practice
 
-- [Lab 02: Event Sources](../../labs/04-argo-events/lab-02-event-sources.md) - Create sensors with various trigger types
-- [Lab 03: Triggers](../../labs/04-argo-events/lab-03-triggers.md) - Work with different trigger actions and conditions
-- [Lab 04: Integration with Argo Workflows](../../labs/04-argo-events/lab-04-integration.md) - Build end-to-end automation with triggers
+- [Lab 02: Event Sources](../../labs/04-argo-events/lab-02-event-sources.md) - Create sensors with various trigger types and integration patterns
+- [Lab 03: Sensors](../../labs/04-argo-events/lab-02-event-sources.md) - Work with different trigger actions and conditions
+- [Lab 04: Integrations](../../labs/04-argo-events/lab-02-event-sources.md) - Build end-to-end automation with CI/CD and resource watching

@@ -1102,3 +1102,27 @@ argocd app rollback myapp 3
 For practical exercises and labs on sync strategies, see:
 
 - [Lab 03: Managing Application Sync](../../labs/01-argo-cd/lab-03-sync-management.md)
+
+## Sync Wave Sequencing
+
+Sync waves control the order of resource deployment within an application.
+
+## Prune Resources
+
+Prune resources automatically removes Kubernetes objects no longer defined in Git.
+
+## Replace Strategy
+
+Replace strategy recreates resources instead of patching for certain scenarios.
+
+## Selective Sync
+
+Selective sync applies changes to specific application resources only.
+
+## Sync Retry Logic
+
+Retry logic handles transient failures during synchronization operations.
+
+## Sync Timeout Configuration
+
+Timeout configuration prevents indefinite sync operations and handles stuck deployments.
